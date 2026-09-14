@@ -1,0 +1,19 @@
+name: Publish
+# Packagist is the PHP registry. It does not accept uploaded artifacts: it reads
+# tags straight from this GitHub repo. The recommended setup is the Packagist
+# GitHub integration (see README) so every push/tag updates the package
+# automatically. This workflow is a backstop that pings the Packagist update API
+# on each release, in case the webhook is not configured.
+on:
+  release:
+    types: [published]
+jobs:
+  notify-packagist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Packagist to update the package
+        run: |
+          curl -sSf -XPOST \
+            -H 'content-type:application/json' \
+            "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}" \
+            -d '{"repository":{"url":"https://github.com/Cookie-Munch/php"}}'

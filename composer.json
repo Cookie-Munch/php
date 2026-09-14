@@ -1,0 +1,37 @@
+{
+    "name": "cookiemunch/cookiemunch",
+    "description": "PHP client for the Cookie Munch Developer API (/v1) plus the public consent-ingest endpoint.",
+    "type": "library",
+    "keywords": ["cookiemunch", "consent", "cmp", "gdpr", "cookies", "sdk"],
+    "homepage": "https://cookiemunch.net",
+    "support": {
+        "source": "https://github.com/Cookie-Munch/php",
+        "issues": "https://github.com/Cookie-Munch/php/issues"
+    },
+    "license": "MIT",
+    "version": "0.1.0",
+    "require": {
+        "php": ">=8.1",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5 || ^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "CookieMunch\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CookieMunch\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
