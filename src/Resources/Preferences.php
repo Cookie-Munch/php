@@ -39,4 +39,15 @@ final class Preferences
 
         return is_array($result) ? $result : null;
     }
+
+    /**
+     * One subject's preference record. A subject with none has empty `purposes` —
+     * GET /v1/preferences/{subjectId}. Requires consent:read.
+     *
+     * @return array<string, mixed>
+     */
+    public function get(string $subjectId): array
+    {
+        return $this->client->requestJson('GET', '/v1/preferences/' . rawurlencode($subjectId));
+    }
 }

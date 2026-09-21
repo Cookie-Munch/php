@@ -37,4 +37,10 @@ final class Ropa
     {
         return $this->client->requestJson('POST', '/v1/ropa', $input);
     }
+
+    /** The org's RoPA (GDPR Art. 30), as CSV — GET /v1/ropa/export.csv. */
+    public function exportCsv(): string
+    {
+        return (string) $this->client->request('GET', '/v1/ropa/export.csv', null, null, true);
+    }
 }

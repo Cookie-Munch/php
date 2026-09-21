@@ -216,6 +216,69 @@ final class Sites
         return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/elements/ad-personalization', $opts);
     }
 
+    /**
+     * Which banner design the site uses — GET /v1/sites/{cbid}/banner. Returns { bannerId: ?string }.
+     *
+     * @return array<string, mixed>
+     */
+    public function banner(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/banner');
+    }
+
+    /**
+     * The site's privacy and cookie policy, as Markdown — GET /v1/sites/{cbid}/policy.
+     *
+     * @param array{contactEmail?: string, effectiveDate?: string, jurisdictions?: list<string>} $opts
+     */
+    public function policy(string $cbid, array $opts = []): string
+    {
+        $query = [
+            'contactEmail' => $opts['contactEmail'] ?? null,
+            'effectiveDate' => $opts['effectiveDate'] ?? null,
+            'jurisdictions' => isset($opts['jurisdictions']) ? implode(',', $opts['jurisdictions']) : null,
+        ];
+
+        return (string) $this->client->request('GET', '/v1/sites/' . self::enc($cbid) . '/policy', null, $query, true);
+    }
+
+    /**
+     * Which trackers fired after opt-out in a captured session, and what personal data left
+     * the page — POST /v1/sites/{cbid}/sentry.
+     *
+     * @param array{har?: mixed, requests?: list<mixed>, consent?: array<string, bool>, gpc?: bool} $input
+     *
+     * @return array<string, mixed>
+     */
+    public function analyzeSession(string $cbid, array $input): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/sentry', $input);
+    }
+
+    /**
+     * Exactly what to publish to prove control of the domain, for each method —
+     * GET /v1/sites/{cbid}/verify/challenge.
+     *
+     * @return array<string, mixed>
+     */
+    public function verifyChallenge(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/verify/challenge');
+    }
+
+    /**
+     * Create up to 100 sites — POST /v1/sites/bulk. Partial success: each item reports `ok`
+     * or its own error.
+     *
+     * @param list<array{domain: string, cbid?: string, platform?: string}> $sites
+     *
+     * @return array<string, mixed>
+     */
+    public function createBulk(array $sites): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/bulk', ['sites' => $sites]);
+    }
+
     private static function enc(string $segment): string
     {
         return rawurlencode($segment);

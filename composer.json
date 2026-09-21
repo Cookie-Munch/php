@@ -4,10 +4,6 @@
     "type": "library",
     "keywords": ["cookiemunch", "consent", "cmp", "gdpr", "cookies", "sdk"],
     "homepage": "https://cookiemunch.net",
-    "support": {
-        "source": "https://github.com/Cookie-Munch/php",
-        "issues": "https://github.com/Cookie-Munch/php/issues"
-    },
     "license": "MIT",
     "version": "0.1.0",
     "require": {

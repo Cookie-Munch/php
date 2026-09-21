@@ -212,4 +212,170 @@ final class ClientTest extends TestCase
 
         $this->assertSame('https://api.example.test/v1/me', $this->requests[0]['url']);
     }
+
+    public function testOrgGetHitsExpectedUrl(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"id":"org_1","name":"Acme","plan":"pro","logoUrl":null}']);
+
+        $org = $client->org->get();
+
+        $this->assertSame('GET', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/org', $this->requests[0]['url']);
+        $this->assertSame('Acme', $org['name']);
+    }
+
+    public function testOrgUpdateClearingLogoSendsExplicitNull(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"id":"org_1","name":"Acme","plan":"pro","logoUrl":null}']);
+
+        $client->org->update(['logoUrl' => null]);
+
+        $decoded = json_decode((string) $this->requests[0]['body'], true);
+        $this->assertArrayHasKey('logoUrl', $decoded);
+        $this->assertNull($decoded['logoUrl']);
+    }
+
+    public function testOrgUpdateWithoutLogoUrlOmitsTheKey(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"id":"org_1","name":"Acme","plan":"pro","logoUrl":null}']);
+
+        $client->org->update(['name' => 'New Name']);
+
+        $decoded = json_decode((string) $this->requests[0]['body'], true);
+        $this->assertArrayNotHasKey('logoUrl', $decoded);
+        $this->assertSame('New Name', $decoded['name']);
+    }
+
+    public function testAuditPassesLimitAsQueryParam(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"entries":[]}']);
+
+        $client->audit(50);
+
+        $this->assertSame('GET', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/audit?limit=50', $this->requests[0]['url']);
+    }
+
+    public function testAuditOmitsLimitWhenNotGiven(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"entries":[]}']);
+
+        $client->audit();
+
+        $this->assertSame('https://api.example.test/v1/audit', $this->requests[0]['url']);
+    }
+
+    public function testAssetsUploadPostsDataAndContentType(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"url":"https://cdn.example.test/a.png"}']);
+
+        $result = $client->assets->upload(['data' => 'QUJD', 'contentType' => 'image/png']);
+
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/assets', $this->requests[0]['url']);
+        $decoded = json_decode((string) $this->requests[0]['body'], true);
+        $this->assertSame('QUJD', $decoded['data']);
+        $this->assertSame('image/png', $decoded['contentType']);
+        $this->assertSame('https://cdn.example.test/a.png', $result['url']);
+    }
+
+    public function testKeysRollHitsExpectedUrl(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"key":"fck_new","prefix":"fck_new_pre"}']);
+
+        $result = $client->keys->roll('fck_old_pre');
+
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/keys/fck_old_pre/roll', $this->requests[0]['url']);
+        $this->assertSame('fck_new', $result['key']);
+    }
+
+    public function testKeysUpdateSendsOnlyGivenFields(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"ok":true}']);
+
+        $client->keys->update('fck_pre', ['name' => 'CI key']);
+
+        $this->assertSame('PATCH', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/keys/fck_pre', $this->requests[0]['url']);
+        $decoded = json_decode((string) $this->requests[0]['body'], true);
+        $this->assertSame(['name' => 'CI key'], $decoded);
+    }
+
+    public function testWebhooksRollSecretHitsExpectedUrl(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"secret":"whsec_new"}']);
+
+        $result = $client->webhooks->rollSecret('wh_1');
+
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/webhooks/wh_1/roll', $this->requests[0]['url']);
+        $this->assertSame('whsec_new', $result['secret']);
+    }
+
+    public function testWebhooksTestHitsExpectedUrl(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"ok":true,"status":200}']);
+
+        $result = $client->webhooks->test('wh_1');
+
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/webhooks/wh_1/test', $this->requests[0]['url']);
+        $this->assertTrue($result['ok']);
+    }
+
+    public function testWebhooksDeadLettersHitsExpectedUrl(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"deadLetters":[]}']);
+
+        $client->webhooks->deadLetters();
+
+        $this->assertSame('GET', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/webhooks/dead-letters', $this->requests[0]['url']);
+    }
+
+    public function testWebhooksReplayDeadLetterHitsExpectedUrl(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{}']);
+
+        $client->webhooks->replayDeadLetter('dl_1');
+
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/webhooks/dead-letters/dl_1/replay', $this->requests[0]['url']);
+    }
+
+    public function testPreferencesGetHitsExpectedUrl(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"subjectId":"sub_1","purposes":{}}']);
+
+        $result = $client->preferences->get('sub_1');
+
+        $this->assertSame('GET', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/preferences/sub_1', $this->requests[0]['url']);
+        $this->assertSame('sub_1', $result['subjectId']);
+    }
+
+    public function testDsarEraseSendsCbidAndStamp(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"erased":1,"encryptionEnabled":true,"request":{}}']);
+
+        $client->dsar->erase('dsar_1', 'cb_1', 'stamp_1');
+
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/dsar/dsar_1/erase', $this->requests[0]['url']);
+        $decoded = json_decode((string) $this->requests[0]['body'], true);
+        $this->assertSame(['cbid' => 'cb_1', 'stamp' => 'stamp_1'], $decoded);
+    }
+
+    public function testDsarExportSendsCbidAndStamp(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"records":[],"count":0,"request":{}}']);
+
+        $client->dsar->export('dsar_1', 'cb_1', 'stamp_1');
+
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/dsar/dsar_1/export', $this->requests[0]['url']);
+        $decoded = json_decode((string) $this->requests[0]['body'], true);
+        $this->assertSame(['cbid' => 'cb_1', 'stamp' => 'stamp_1'], $decoded);
+    }
 }

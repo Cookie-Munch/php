@@ -81,18 +81,34 @@ try {
 
 | Group | Methods |
 |---|---|
-| `$cm->me()` / `$cm->usage()` | identity; org usage |
-| `$cm->sites` | `list`, `create`, `get`, `delete`, `getConfig`, `putConfig`, `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization` |
+| `$cm->me()` / `$cm->usage()` / `$cm->audit()` | identity; org usage; audit log (newest first) |
+| `$cm->org` | `get`, `update` — `update(['logoUrl' => null])` removes the logo; omit the key to leave it unchanged |
+| `$cm->assets` | `upload` — base64 image, returns `{ url }` |
+| `$cm->sites` | `list`, `create`, `get`, `delete`, `getConfig`, `putConfig`, `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
 | `$cm->consent` | `ingest`, `stats`, `log`, `export`, `receipt`, `eraseSubject`, `exportSubject` |
-| `$cm->dsar` | `list`, `create`, `advance` |
+| `$cm->dsar` | `list`, `create`, `advance`, `response` (plain-text notice), `erase`, `export` |
 | `$cm->vendors` | `list`, `create` |
-| `$cm->ropa` | `list`, `create` |
+| `$cm->ropa` | `list`, `create`, `exportCsv` (CSV string) |
 | `$cm->brandKits` | `list`, `create`, `delete` |
-| `$cm->preferences` | `list`, `save` |
+| `$cm->preferences` | `list`, `save`, `get` |
 | `$cm->members` | `list`, `invite`, `setRole`, `remove` |
-| `$cm->keys` | `list`, `issue` |
-| `$cm->webhooks` | `list`, `create`, `delete` |
+| `$cm->keys` | `list`, `issue` — pass `scopes` and/or `cbids` for a least-privilege key, `revoke`, `roll`, `update` |
+| `$cm->webhooks` | `list`, `create`, `update`, `delete`, `rollSecret`, `test`, `deadLetters`, `replayDeadLetter` |
 | `$cm->banners` | `list`, `create`, `get`, `update`, `delete`, `assignments`, `setAssignments`, `publish` |
+| `$cm->identity` | `resolve`, `link`, `cluster` |
+| `$cm->vault` | `record`, `current`, `permits` |
+| `$cm->profile` | `get`, `setAttributes`, `activate` |
+| `$cm->subscriptions` | `topics`, `setTopics`, `get`, `set`, `unsubscribeAll`, `resubscribe`, `activation` |
+| `$cm->assessments` | `templates`, `list`, `start`, `get`, `answer`, `autoPopulateFromMap`, `autoPopulate`, `submit`, `approve`, `reject` |
+| `$cm->discovery` | `ingestMap`, `getMap`, `ropaDrafts`, `evidence`, `drift`, `planEnforcement` |
+| `$cm->ai` | `getPolicy`, `setPolicy`, `inspect`, `inventory`, `lineage`, `registerSystem`, `systems`, `audit` |
+| `$cm->fulfillment` | `sla`, `plan`, `status`, and for the in-environment agent `pendingTasks`, `reportTask` |
+| `$cm->regulatory` | `feed`, `upcoming` |
+| `$cm->reseller` | `list`, `create`, `get`, `update`, `deprovision` (suspends; `purge: true` deletes irreversibly), `listKeys`, `mintKey`, `revokeKey` — needs the `reseller:*` scopes |
+
+Every operation of the `/v1` API is reachable; `tests/ParityTest.php` keeps it that way
+against `sdks/operations.json`, generated from the server's OpenAPI document. Identity,
+vault and profile reads are `POST`s so a person's identifiers never appear in a URL.
 
 > Field-shape note: where the TypeScript SDK and the server's OpenAPI schema disagree, this SDK follows the **OpenAPI** schema (the authoritative wire contract). Notably `usage()` returns `{ domains, seats, monthlyEvents }`; A/B rows are `{ variant, impressions, optIns, optInRate }`; members are `{ userId, email, role }`; `keys->list()` returns `{ prefix, createdAt }` rows and `keys->issue()` returns `{ key, prefix }`.
 
@@ -132,14 +148,3 @@ php tests/run.php
 ## License
 
 MIT
-
-## Publishing (maintainers)
-
-This package is distributed via [Packagist](https://packagist.org). Packagist does
-not host uploaded archives — it pulls tags directly from this repository. To keep it
-in sync, submit the package once at https://packagist.org/packages/submit and enable
-the **GitHub webhook** (Packagist → your profile → "Show API token", then add the
-Packagist service hook to this repo, or install the Packagist GitHub app). After that,
-every pushed git tag (e.g. `v0.1.0`) publishes a new version automatically. The
-release-triggered `.github/workflows/publish.yml` pings the Packagist update API as a
-backstop using the `PACKAGIST_USERNAME` and `PACKAGIST_API_TOKEN` repo secrets.

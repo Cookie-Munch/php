@@ -12,11 +12,24 @@ use CookieMunch\Resources\Consent;
 use CookieMunch\Resources\Dsar;
 use CookieMunch\Resources\Keys;
 use CookieMunch\Resources\Members;
+use CookieMunch\Resources\Org;
 use CookieMunch\Resources\Preferences;
 use CookieMunch\Resources\Ropa;
 use CookieMunch\Resources\Sites;
 use CookieMunch\Resources\Vendors;
 use CookieMunch\Resources\Webhooks;
+use CookieMunch\Resources\Identity;
+use CookieMunch\Resources\Vault;
+use CookieMunch\Resources\Profile;
+use CookieMunch\Resources\Subscriptions;
+use CookieMunch\Resources\Assessments;
+use CookieMunch\Resources\Discovery;
+use CookieMunch\Resources\Ai;
+use CookieMunch\Resources\Fulfillment;
+use CookieMunch\Resources\Regulatory;
+use CookieMunch\Resources\Reseller;
+use CookieMunch\Resources\Subjects;
+use CookieMunch\Resources\Assets;
 
 /**
  * A small, dependency-free PHP client for the Cookie Munch Developer API.
@@ -53,6 +66,19 @@ final class Client
     public readonly Keys $keys;
     public readonly Webhooks $webhooks;
     public readonly Banners $banners;
+    public readonly Identity $identity;
+    public readonly Vault $vault;
+    public readonly Profile $profile;
+    public readonly Subscriptions $subscriptions;
+    public readonly Assessments $assessments;
+    public readonly Discovery $discovery;
+    public readonly Ai $ai;
+    public readonly Fulfillment $fulfillment;
+    public readonly Regulatory $regulatory;
+    public readonly Reseller $reseller;
+    public readonly Subjects $subjects;
+    public readonly Org $org;
+    public readonly Assets $assets;
 
     /**
      * @param string         $apiKey    An "fck_..." developer API key.
@@ -80,6 +106,19 @@ final class Client
         $this->keys = new Keys($this);
         $this->webhooks = new Webhooks($this);
         $this->banners = new Banners($this);
+        $this->identity = new Identity($this);
+        $this->vault = new Vault($this);
+        $this->profile = new Profile($this);
+        $this->subscriptions = new Subscriptions($this);
+        $this->assessments = new Assessments($this);
+        $this->discovery = new Discovery($this);
+        $this->ai = new Ai($this);
+        $this->fulfillment = new Fulfillment($this);
+        $this->regulatory = new Regulatory($this);
+        $this->reseller = new Reseller($this);
+        $this->subjects = new Subjects($this);
+        $this->org = new Org($this);
+        $this->assets = new Assets($this);
     }
 
     /** Override the User-Agent header sent on every request. */
@@ -109,6 +148,19 @@ final class Client
     public function usage(): array
     {
         return $this->requestJson('GET', '/v1/usage');
+    }
+
+    /**
+     * The organisation's audit log, newest first — GET /v1/audit. Sign-ins aside, every
+     * administrative change made in the dashboard or through the API, with who made it;
+     * API actions are attributed to `apikey:<prefix>`. Requires an unscoped key that is not
+     * property-locked.
+     *
+     * @return array<string, mixed>
+     */
+    public function audit(?int $limit = null): array
+    {
+        return $this->requestJson('GET', '/v1/audit', null, ['limit' => $limit]);
     }
 
     /**

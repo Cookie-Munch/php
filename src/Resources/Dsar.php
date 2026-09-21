@@ -50,4 +50,34 @@ final class Dsar
     {
         return $this->client->requestJson('POST', '/v1/dsar/' . rawurlencode($id) . '/advance', ['toStatus' => $toStatus]);
     }
+
+    /** The subject-facing response notice for a request, as plain text — GET /v1/dsar/{id}/response. */
+    public function response(string $id): string
+    {
+        return (string) $this->client->request('GET', '/v1/dsar/' . rawurlencode($id) . '/response', null, null, true);
+    }
+
+    /**
+     * Erase a subject's consent records on one site, for a deletion request past identity
+     * verification. Noted on the request. Requires dsar:write and consent:write —
+     * POST /v1/dsar/{id}/erase.
+     *
+     * @return array<string, mixed>
+     */
+    public function erase(string $id, string $cbid, string $stamp): array
+    {
+        return $this->client->requestJson('POST', '/v1/dsar/' . rawurlencode($id) . '/erase', ['cbid' => $cbid, 'stamp' => $stamp]);
+    }
+
+    /**
+     * A subject's consent records on one site, for an access or portability request past
+     * identity verification. Noted on the request. Requires dsar:write and consent:read —
+     * POST /v1/dsar/{id}/export.
+     *
+     * @return array<string, mixed>
+     */
+    public function export(string $id, string $cbid, string $stamp): array
+    {
+        return $this->client->requestJson('POST', '/v1/dsar/' . rawurlencode($id) . '/export', ['cbid' => $cbid, 'stamp' => $stamp]);
+    }
 }
