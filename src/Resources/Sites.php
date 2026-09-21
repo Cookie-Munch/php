@@ -227,6 +227,18 @@ final class Sites
     }
 
     /**
+     * Pages where the embed could not load its banner renderer — the host page's CSP or
+     * Trusted Types policy refused it, so nobody there can be asked. Empty is healthy —
+     * GET /v1/sites/{cbid}/blocked.
+     *
+     * @return array<string, mixed>
+     */
+    public function blocked(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . rawurlencode($cbid) . '/blocked');
+    }
+
+    /**
      * The site's privacy and cookie policy, as Markdown — GET /v1/sites/{cbid}/policy.
      *
      * @param array{contactEmail?: string, effectiveDate?: string, jurisdictions?: list<string>} $opts
