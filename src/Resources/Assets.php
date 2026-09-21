@@ -25,4 +25,16 @@ final class Assets
     {
         return $this->client->requestJson('POST', '/v1/assets', $input);
     }
+
+    /**
+     * Delete a stored image. Pass the URL upload() returned, or just its file name. Only
+     * this org's images are reachable: the folder comes from the API key, not from the
+     * name sent — DELETE /v1/assets/{fileName}.
+     */
+    public function delete(string $urlOrFileName): void
+    {
+        $parts = explode('/', $urlOrFileName);
+        $name = (string) end($parts);
+        $this->client->request('DELETE', '/v1/assets/' . rawurlencode($name));
+    }
 }
