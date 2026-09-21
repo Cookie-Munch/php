@@ -239,6 +239,18 @@ final class Sites
     }
 
     /**
+     * Read a cookie declaration exported from another CMP and translate its categories
+     * into ours. Nothing is applied — the result comes back for review —
+     * POST /v1/sites/{cbid}/import.
+     *
+     * @return array<string, mixed>
+     */
+    public function importDeclaration(string $cbid, string $data): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . rawurlencode($cbid) . '/import', ['data' => $data]);
+    }
+
+    /**
      * The site's privacy and cookie policy, as Markdown — GET /v1/sites/{cbid}/policy.
      *
      * @param array{contactEmail?: string, effectiveDate?: string, jurisdictions?: list<string>} $opts

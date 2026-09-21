@@ -140,6 +140,17 @@ final class Client
     }
 
     /**
+     * GET /v1/languages — the languages the banner already has copy for. Diff it
+     * against your visitors' locales to find the ones you still have to write.
+     *
+     * @return array<int, array<string, mixed>> each { code, name, endonym, rtl, source }
+     */
+    public function languages(): array
+    {
+        return $this->requestJson('GET', '/v1/languages');
+    }
+
+    /**
      * Current resource usage for the org — GET /v1/usage.
      * Returns { domains, seats, monthlyEvents } (per the authoritative OpenAPI schema).
      *
