@@ -47,25 +47,31 @@ public function executors(): array
 }
 
 /**
- * Connect one. The secret is stored encrypted and never returned; the response carries the
+ * Connect one. $profile describes that system's API — paths, the words it uses for export
+ * and erase, its status vocabulary, how it signs webhooks — so connecting a new platform
+ * needs no code. The secret is stored encrypted and never returned; the response carries the
  * webhook URL to configure in that system.
+ *
+ * @param array<string, mixed> $profile
  *
  * @return array<string, mixed>
  */
 public function connectExecutor(
-    string $kind,
+    string $system,
     string $baseUrl,
     string $secretKey,
+    array $profile,
     ?string $webhookSecret = null,
-    ?string $system = null,
     ?bool $auto = null,
 ): array {
-    $body = ['kind' => $kind, 'baseUrl' => $baseUrl, 'secretKey' => $secretKey];
+    $body = [
+        'system' => $system,
+        'baseUrl' => $baseUrl,
+        'secretKey' => $secretKey,
+        'profile' => $profile,
+    ];
     if ($webhookSecret !== null) {
         $body['webhookSecret'] = $webhookSecret;
-    }
-    if ($system !== null) {
-        $body['system'] = $system;
     }
     if ($auto !== null) {
         $body['auto'] = $auto;
