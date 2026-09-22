@@ -40,6 +40,54 @@ public function status(string $requestId): array
     return $this->client->requestJson('GET', '/v1/dsar/' . rawurlencode($requestId) . '/fulfillment');
 }
 
+/** @return list<array<string, mixed>> Systems connected to run part of a request themselves. */
+public function executors(): array
+{
+    return $this->client->requestJson('GET', '/v1/dsar/executors');
+}
+
+/**
+ * Connect one. The secret is stored encrypted and never returned; the response carries the
+ * webhook URL to configure in that system.
+ *
+ * @return array<string, mixed>
+ */
+public function connectExecutor(
+    string $kind,
+    string $baseUrl,
+    string $secretKey,
+    ?string $webhookSecret = null,
+    ?string $system = null,
+    ?bool $auto = null,
+): array {
+    $body = ['kind' => $kind, 'baseUrl' => $baseUrl, 'secretKey' => $secretKey];
+    if ($webhookSecret !== null) {
+        $body['webhookSecret'] = $webhookSecret;
+    }
+    if ($system !== null) {
+        $body['system'] = $system;
+    }
+    if ($auto !== null) {
+        $body['auto'] = $auto;
+    }
+
+    return $this->client->requestJson('POST', '/v1/dsar/executors', $body);
+}
+
+public function disconnectExecutor(string $id): void
+{
+    $this->client->requestJson('DELETE', '/v1/dsar/executors/' . rawurlencode($id));
+}
+
+/** @return array<string, mixed> The export bundle a connected system produced. */
+public function taskExport(string $requestId, string $taskId): array
+{
+    return $this->client->requestJson(
+        'GET',
+        '/v1/dsar/' . rawurlencode($requestId) . '/tasks/' . rawurlencode($taskId) . '/export',
+    );
+}
+
 /** @return array<string, mixed> For the in-environment agent: tasks to execute inside your network. */
 public function pendingTasks(?int $limit = null): array
 {
