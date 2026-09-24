@@ -80,6 +80,18 @@ final class Sites
     }
 
     /**
+     * Change part of a site's config — PATCH /v1/sites/{cbid}/config.
+     * Omitted fields keep their stored value; putConfig() replaces the whole document.
+     *
+     * @param array<string,mixed> $config
+     * @return array<string,mixed>
+     */
+    public function patchConfig(string $cbid, array $config): array
+    {
+        return $this->client->requestJson('PATCH', '/v1/sites/' . self::enc($cbid) . '/config', $config);
+    }
+
+    /**
      * Latest categorized cookie declaration — GET /v1/sites/{cbid}/cookies.
      * Returns { updatedAt, cookies: CategorizedCookie[] } (authoritative OpenAPI shape).
      *

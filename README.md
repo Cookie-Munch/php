@@ -84,7 +84,7 @@ try {
 | `$cm->me()` / `$cm->usage()` / `$cm->audit()` | identity; org usage; audit log (newest first) |
 | `$cm->org` | `get`, `update` — `update(['logoUrl' => null])` removes the logo; omit the key to leave it unchanged |
 | `$cm->assets` | `upload` — base64 image, returns `{ url }` |
-| `$cm->sites` | `list`, `create`, `get`, `delete`, `getConfig`, `putConfig`, `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
+| `$cm->sites` | `list`, `create`, `get`, `delete`, `getConfig`, `putConfig`, `patchConfig`, `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
 | `$cm->consent` | `ingest`, `stats`, `log`, `export`, `receipt`, `eraseSubject`, `exportSubject` |
 | `$cm->dsar` | `list`, `create`, `advance`, `response` (plain-text notice), `erase`, `export` |
 | `$cm->vendors` | `list`, `create` |
