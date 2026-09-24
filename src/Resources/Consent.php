@@ -29,6 +29,21 @@ final class Consent
     }
 
     /**
+     * Verify the consent log's tamper-evident hash chain —
+     * GET /v1/sites/{cbid}/consent/verify.
+     *
+     * Each record carries the hash of the one before it, so an edited, reordered or removed
+     * record answers false. This is the evidence behind the log.
+     */
+    public function verify(string $cbid): bool
+    {
+        /** @var array{valid?: bool} $out */
+        $out = $this->client->request('GET', '/v1/sites/' . self::enc($cbid) . '/consent/verify') ?? [];
+
+        return (bool) ($out['valid'] ?? false);
+    }
+
+    /**
      * Aggregated per-day consent stats — GET /v1/sites/{cbid}/consent/stats.
      *
      * @param array{from?: int, to?: int} $query Epoch-ms window bounds.
