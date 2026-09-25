@@ -140,6 +140,20 @@ final class Client
     }
 
     /**
+     * Create a sibling organisation owned by the same account — POST /v1/orgs.
+     *
+     * For starting a separate business of your own. Needs an unscoped key and counts against
+     * the account's plan org allowance (403 org_limit names the plan). Not reseller
+     * provisioning, which is for organisations you run on behalf of YOUR customers.
+     *
+     * @return array<string, mixed>
+     */
+    public function createOrg(string $name): array
+    {
+        return $this->requestJson('POST', '/v1/orgs', ['name' => $name]);
+    }
+
+    /**
      * GET /v1/languages — the languages the banner already has copy for. Diff it
      * against your visitors' locales to find the ones you still have to write.
      *
