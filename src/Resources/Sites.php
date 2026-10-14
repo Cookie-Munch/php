@@ -68,20 +68,24 @@ final class Sites
     }
 
     /**
-     * Upsert (merge) site config — PUT /v1/sites/{cbid}/config.
+     * Replace site config — PUT /v1/sites/{cbid}/config. A top-level field $config omits
+     * reverts to its default — unless $keepUnspecified (?keep=unspecified), which keeps its
+     * stored value. A top-level field sent as null reverts to its default.
      *
      * @param array<string, mixed> $config
      *
      * @return array<string, mixed>
      */
-    public function putConfig(string $cbid, array $config): array
+    public function putConfig(string $cbid, array $config, bool $keepUnspecified = false): array
     {
-        return $this->client->requestJson('PUT', '/v1/sites/' . self::enc($cbid) . '/config', $config);
+        $query = $keepUnspecified ? '?keep=unspecified' : '';
+        return $this->client->requestJson('PUT', '/v1/sites/' . self::enc($cbid) . '/config' . $query, $config);
     }
 
     /**
      * Change part of a site's config — PATCH /v1/sites/{cbid}/config.
-     * Omitted fields keep their stored value; putConfig() replaces the whole document.
+     * A JSON Merge Patch (RFC 7386): omitted fields keep their stored value, and a field set
+     * to null is removed (it takes its default). putConfig() replaces the whole document.
      *
      * @param array<string,mixed> $config
      * @return array<string,mixed>
@@ -99,9 +103,10 @@ final class Sites
      * @param array<string,mixed> $config
      * @return array<string,mixed>
      */
-    public function dryRunConfig(string $cbid, array $config, bool $replace = false): array
+    public function dryRunConfig(string $cbid, array $config, bool $replace = false, bool $keepUnspecified = false): array
     {
-        return $this->client->requestJson($replace ? 'PUT' : 'PATCH', '/v1/sites/' . self::enc($cbid) . '/config?dryRun=1', $config);
+        $keep = $replace && $keepUnspecified ? '&keep=unspecified' : '';
+        return $this->client->requestJson($replace ? 'PUT' : 'PATCH', '/v1/sites/' . self::enc($cbid) . '/config?dryRun=1' . $keep, $config);
     }
 
     /**
@@ -289,6 +294,58 @@ final class Sites
     public function importDeclaration(string $cbid, string $data): array
     {
         return $this->client->requestJson('POST', '/v1/sites/' . rawurlencode($cbid) . '/import', ['data' => $data]);
+    }
+
+    /**
+     * Import a declaration exported from another CMP AND declare it: every row whose
+     * category mapped to ours and that has a purpose is declared; the rest come back in
+     * `skipped`. Cookies already declared are kept unless $overwrite —
+     * POST /v1/sites/{cbid}/import?apply=1.
+     *
+     * @return array<string, mixed>
+     */
+    public function applyImport(string $cbid, string $data, bool $overwrite = false): array
+    {
+        $query = '?apply=1' . ($overwrite ? '&overwrite=1' : '');
+        return $this->client->requestJson('POST', '/v1/sites/' . rawurlencode($cbid) . '/import' . $query, ['data' => $data]);
+    }
+
+    /**
+     * Declare what one cookie is. Overrides scanned, observed and database classification
+     * everywhere (API, preference modal, data-cc="declaration"). A name ending in `*`
+     * declares a prefix wildcard — PUT /v1/sites/{cbid}/cookies/{name}.
+     *
+     * @param array{category: string, purpose: string, provider?: string, expiry?: string, domain?: string, pattern?: bool} $declaration
+     * @return array<string, mixed> { cookie, warnings? }
+     */
+    public function declareCookie(string $cbid, string $name, array $declaration): array
+    {
+        return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name), $declaration);
+    }
+
+    /**
+     * Declare many cookies at once (each with `name`). All-or-nothing; $replace also
+     * removes declarations the list does not name — PUT /v1/sites/{cbid}/cookies.
+     *
+     * @param list<array<string, mixed>> $cookies
+     * @return array<string, mixed> { declared, saved, removed, warnings? }
+     */
+    public function declareCookies(string $cbid, array $cookies, bool $replace = false): array
+    {
+        $body = ['cookies' => $cookies];
+        if ($replace) {
+            $body['replace'] = true;
+        }
+        return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/cookies', $body);
+    }
+
+    /**
+     * Remove a declaration; the scanned classification applies again —
+     * DELETE /v1/sites/{cbid}/cookies/{name}.
+     */
+    public function undeclareCookie(string $cbid, string $name): void
+    {
+        $this->client->request('DELETE', '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name));
     }
 
     /**

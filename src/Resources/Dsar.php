@@ -60,6 +60,19 @@ final class Dsar
     }
 
     /**
+     * Mark a CLOSED request (completed or rejected) as a test, after the fact —
+     * POST /v1/dsar/{id}/mark-test. An open one is refused with 409 request_not_closed.
+     * Audited; delete() then works on it.
+     *
+     * @return array{request: array<string, mixed>, changed: bool}
+     */
+    public function markTest(string $id): array
+    {
+        /** @var array{request: array<string, mixed>, changed: bool} */
+        return $this->client->requestJson('POST', '/v1/dsar/' . rawurlencode($id) . '/mark-test');
+    }
+
+    /**
      * Advance a DSAR to a new status — POST /v1/dsar/{id}/advance.
      * Returns { request: DsarRequest }.
      *
