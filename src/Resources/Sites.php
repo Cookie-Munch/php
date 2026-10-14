@@ -92,6 +92,19 @@ final class Sites
     }
 
     /**
+     * Preview a config write without saving it — PATCH (or, with $replace, PUT)
+     * /v1/sites/{cbid}/config?dryRun=1. Returns `config` (as it would be saved),
+     * `diff` (every leaf that would change) and any `warnings`.
+     *
+     * @param array<string,mixed> $config
+     * @return array<string,mixed>
+     */
+    public function dryRunConfig(string $cbid, array $config, bool $replace = false): array
+    {
+        return $this->client->requestJson($replace ? 'PUT' : 'PATCH', '/v1/sites/' . self::enc($cbid) . '/config?dryRun=1', $config);
+    }
+
+    /**
      * Latest categorized cookie declaration — GET /v1/sites/{cbid}/cookies.
      * Returns { updatedAt, cookies: CategorizedCookie[] } (authoritative OpenAPI shape).
      *
@@ -175,6 +188,22 @@ final class Sites
     public function brand(string $cbid): array
     {
         return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/brand', []);
+    }
+
+    /**
+     * Mint a short-lived signed token to preview the banner as a visitor in a given region
+     * and language sees it (headless browsers included; nothing is recorded) —
+     * POST /v1/sites/{cbid}/preview-token. Returns { cbid, token, expiresAt, previewUrl?, region?, lang? }.
+     *
+     * @return array<string, mixed>
+     */
+    public function previewToken(string $cbid, ?string $region = null, ?string $lang = null, ?string $url = null, ?int $ttlSeconds = null): array
+    {
+        $body = array_filter(
+            ['region' => $region, 'lang' => $lang, 'url' => $url, 'ttlSeconds' => $ttlSeconds],
+            static fn ($v) => $v !== null,
+        );
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/preview-token', $body);
     }
 
     /**

@@ -29,13 +29,34 @@ final class Dsar
     /**
      * Create a DSAR — POST /v1/dsar. Returns { request: DsarRequest }.
      *
-     * @param array{type: string, subjectEmail: string, regulation: string, note?: string} $input
+     * `test: true` files a test request: off the SLA board, labelled, and deletable.
+     *
+     * @param array{type: string, subjectEmail: string, regulation: string, note?: string, cbid?: string, stamp?: string, jurisdiction?: string, test?: bool} $input
      *
      * @return array<string, mixed>
      */
     public function create(array $input): array
     {
         return $this->client->requestJson('POST', '/v1/dsar', $input);
+    }
+
+    /**
+     * One request, in the shape list() returns — GET /v1/dsar/{id}.
+     *
+     * @return array<string, mixed>
+     */
+    public function get(string $id): array
+    {
+        return $this->client->requestJson('GET', '/v1/dsar/' . rawurlencode($id));
+    }
+
+    /**
+     * Delete a TEST request with its tasks and log — DELETE /v1/dsar/{id}. Real requests are
+     * refused with 409 not_a_test_request; the deletion is audited.
+     */
+    public function delete(string $id): void
+    {
+        $this->client->requestJson('DELETE', '/v1/dsar/' . rawurlencode($id));
     }
 
     /**

@@ -80,6 +80,48 @@ public function connectExecutor(
     return $this->client->requestJson('POST', '/v1/dsar/executors', $body);
 }
 
+/**
+ * Change a connection in place — PATCH /v1/dsar/executors/{id}. Only the keys you pass change;
+ * the credential is kept unless `secretKey` is given, and `webhookSecret => null` removes it.
+ *
+ * @param array{profile?: array<string, mixed>, baseUrl?: string, secretKey?: string, webhookSecret?: ?string, auto?: bool} $patch
+ *
+ * @return array<string, mixed>
+ */
+public function updateExecutor(string $id, array $patch): array
+{
+    return $this->client->requestJson('PATCH', '/v1/dsar/executors/' . rawurlencode($id), $patch);
+}
+
+/**
+ * Try a connection against one email without filing a request — POST /v1/dsar/executors/{id}/test.
+ * Runs the lookup and returns the raw (redacted) upstream answers. `open: true` on an export
+ * opens and polls a real export once; an erasure is never sent.
+ *
+ * @return array<string, mixed>
+ */
+public function testExecutor(string $id, string $email, ?string $operation = null, ?bool $open = null): array
+{
+    $body = ['email' => $email];
+    if ($operation !== null) {
+        $body['operation'] = $operation;
+    }
+    if ($open !== null) {
+        $body['open'] = $open;
+    }
+
+    return $this->client->requestJson('POST', '/v1/dsar/executors/' . rawurlencode($id) . '/test', $body);
+}
+
+/** @return array<string, mixed> One task: status history (events), upstream log, versions. */
+public function task(string $requestId, string $taskId): array
+{
+    return $this->client->requestJson(
+        'GET',
+        '/v1/dsar/' . rawurlencode($requestId) . '/tasks/' . rawurlencode($taskId),
+    );
+}
+
 public function disconnectExecutor(string $id): void
 {
     $this->client->requestJson('DELETE', '/v1/dsar/executors/' . rawurlencode($id));

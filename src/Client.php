@@ -140,6 +140,19 @@ final class Client
     }
 
     /**
+     * GET /v1/orgs — every organisation on this key's account, each with its effective
+     * plan, planSource (org = its own subscription, account = covered by a higher plan
+     * another org on the account pays for) and subscribedPlan, plus orgLimit and upgradeUrl.
+     * Needs an unscoped key that is not locked to properties.
+     *
+     * @return array<string, mixed> { orgs, orgLimit: { max, plan, used }, upgradeUrl }
+     */
+    public function listOrgs(): array
+    {
+        return $this->requestJson('GET', '/v1/orgs');
+    }
+
+    /**
      * Create a sibling organisation owned by the same account — POST /v1/orgs.
      *
      * For starting a separate business of your own. Needs an unscoped key and counts against
