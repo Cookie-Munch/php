@@ -137,24 +137,64 @@ final class Sites
     }
 
     /**
-     * Kick off an async cookie crawl — POST /v1/sites/{cbid}/scan.
-     * Returns a ScanStatus { status: "idle"|"scanning", lastScannedAt }.
+     * Start a cookie crawl — POST /v1/sites/{cbid}/scan. Answers at once with `scanId`
+     * and `state: queued`; $wait (seconds, at most 60) holds the request until it is done
+     * or failed.
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed> ScanStatus
      */
-    public function scan(string $cbid): array
+    public function scan(string $cbid, int|float|null $wait = null): array
     {
-        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/scan');
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/scan' . self::waitQuery($wait));
     }
 
     /**
-     * Current cookie-scan status — GET /v1/sites/{cbid}/scan.
+     * The last scan — GET /v1/sites/{cbid}/scan: `state` (queued, scanning, done, failed),
+     * `scanId`, timings, `cookieCount`, `pagesVisited`, `error`. $wait (seconds, at most 60)
+     * holds the request until a running scan settles.
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed> ScanStatus
      */
-    public function scanStatus(string $cbid): array
+    public function scanStatus(string $cbid, int|float|null $wait = null): array
     {
-        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/scan');
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/scan' . self::waitQuery($wait));
+    }
+
+    /**
+     * Return once the site's scan is done or failed (read `state` and `error`), long-polling
+     * the server; at $timeoutMs it returns the still-running state. Each request asks the
+     * server to hold at most $pollSeconds, which must stay inside the transport's timeout
+     * (the default CurlTransport allows 30 s).
+     *
+     * @return array<string, mixed> ScanStatus
+     */
+    public function waitForScan(string $cbid, int $timeoutMs = 120000, int $pollSeconds = 25): array
+    {
+        $until = microtime(true) + $timeoutMs / 1000;
+        while (true) {
+            $left = $until - microtime(true);
+            $asked = max(0.0, min(60.0, $left, (float) $pollSeconds));
+            $started = microtime(true);
+            $r = $this->scanStatus($cbid, $asked);
+            if (($r['status'] ?? null) !== 'scanning' || $until - microtime(true) <= 0) {
+                return $r;
+            }
+            // A server that answered sooner than asked is not hammered.
+            $early = min(1.0, $until - microtime(true)) - (microtime(true) - $started);
+            if ($early > 0) {
+                usleep((int) ($early * 1_000_000));
+            }
+        }
+    }
+
+    /** `?wait=30`, `?wait=1.5`, or nothing. */
+    private static function waitQuery(int|float|null $wait): string
+    {
+        if ($wait === null) {
+            return '';
+        }
+        $n = (float) $wait;
+        return '?wait=' . ($n == floor($n) ? (string) (int) $n : (string) round($n, 3));
     }
 
     /**
@@ -356,6 +396,45 @@ final class Sites
             $body['replace'] = true;
         }
         return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/cookies' . ($dryRun ? '?dryRun=1' : ''), $body);
+    }
+
+    /**
+     * Retire a cookie the site renamed or stopped setting — POST
+     * /v1/sites/{cbid}/cookies/{name}/retire. It leaves the banner's cookie list,
+     * `data-cc="declaration"` and the public feed, and stays listed for you with `retired`.
+     * A name ending in `*` retires every cookie with that prefix. If a crawl or a visit sees
+     * it again afterwards it is listed again, flagged `retired_but_seen`. $dryRun stores nothing.
+     *
+     * @return array<string, mixed> { cookie, matched, dryRun?, retired? }
+     */
+    public function retireCookie(string $cbid, string $name, ?string $renamedTo = null, ?string $note = null, bool $dryRun = false): array
+    {
+        $body = [];
+        if ($renamedTo !== null) {
+            $body['renamedTo'] = $renamedTo;
+        }
+        if ($note !== null) {
+            $body['note'] = $note;
+        }
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name) . '/retire' . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('POST', $path, (object) $body);
+    }
+
+    /**
+     * Un-retire a cookie: it is listed again everywhere — DELETE
+     * /v1/sites/{cbid}/cookies/{name}/retire. With $dryRun nothing is removed and the answer
+     * is the would-be list (`retired`); otherwise null.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function unretireCookie(string $cbid, string $name, bool $dryRun = false): ?array
+    {
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name) . '/retire';
+        if ($dryRun) {
+            return $this->client->requestJson('DELETE', $path . '?dryRun=1');
+        }
+        $this->client->request('DELETE', $path);
+        return null;
     }
 
     /**

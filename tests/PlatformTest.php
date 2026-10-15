@@ -208,4 +208,36 @@ final class PlatformTest extends TestCase
         );
         $this->assertSame(['headers' => ['x-sig' => 'v1,abc'], 'body' => '{"a":1}'], $this->calls[0]['body']);
     }
+
+    public function testRetireAndUnretire(): void
+    {
+        $c = $this->client();
+        $c->sites->retireCookie('cb', 'old', 'new', 'v2');
+        $c->sites->retireCookie('cb', 'atlas_*', null, null, true);
+        $out = $c->sites->unretireCookie('cb', 'old', true);
+        $this->assertSame(
+            [
+                ['POST', 'https://api.example.test/v1/sites/cb/cookies/old/retire'],
+                ['POST', 'https://api.example.test/v1/sites/cb/cookies/atlas_%2A/retire?dryRun=1'],
+                ['DELETE', 'https://api.example.test/v1/sites/cb/cookies/old/retire?dryRun=1'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['renamedTo' => 'new', 'note' => 'v2'], $this->calls[0]['body']);
+        $this->assertSame([], $out);
+        $this->assertNull($this->client(204, '')->sites->unretireCookie('cb', 'old'));
+    }
+
+    public function testScanWaitAndWaitForScan(): void
+    {
+        $c = $this->client(200, '{"status":"idle","state":"done","cookieCount":3}');
+        $c->sites->scan('cb', 30);
+        $c->sites->scanStatus('cb', 5);
+        $r = $c->sites->waitForScan('cb', 120000);
+        $this->assertSame('https://api.example.test/v1/sites/cb/scan?wait=30', $this->calls[0]['url']);
+        $this->assertSame('https://api.example.test/v1/sites/cb/scan?wait=5', $this->calls[1]['url']);
+        // Inside the default transport's 30 s timeout.
+        $this->assertSame('https://api.example.test/v1/sites/cb/scan?wait=25', $this->calls[2]['url']);
+        $this->assertSame('done', $r['state']);
+    }
 }
