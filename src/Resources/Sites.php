@@ -329,39 +329,50 @@ final class Sites
     /**
      * Declare what one cookie is. Overrides scanned, observed and database classification
      * everywhere (API, preference modal, data-cc="declaration"). A name ending in `*`
-     * declares a prefix wildcard — PUT /v1/sites/{cbid}/cookies/{name}.
+     * declares a prefix wildcard — PUT /v1/sites/{cbid}/cookies/{name}. `purposes` is the
+     * purpose in other languages (['es' => '…', 'pt-BR' => '…']); `purpose` is the fallback.
+     * $dryRun stores nothing and answers with `declared` (the would-be list) and a `diff`.
      *
-     * @param array{category: string, purpose: string, provider?: string, expiry?: string, domain?: string, pattern?: bool} $declaration
-     * @return array<string, mixed> { cookie, warnings? }
+     * @param array{category: string, purpose: string, purposes?: array<string, string>|null, provider?: string, expiry?: string, domain?: string, pattern?: bool} $declaration
+     * @return array<string, mixed> { cookie, warnings?, dryRun?, declared?, diff? }
      */
-    public function declareCookie(string $cbid, string $name, array $declaration): array
+    public function declareCookie(string $cbid, string $name, array $declaration, bool $dryRun = false): array
     {
-        return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name), $declaration);
+        return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name) . ($dryRun ? '?dryRun=1' : ''), $declaration);
     }
 
     /**
      * Declare many cookies at once (each with `name`). All-or-nothing; $replace also
-     * removes declarations the list does not name — PUT /v1/sites/{cbid}/cookies.
+     * removes declarations the list does not name; $dryRun stores nothing and answers with
+     * what would be, plus a `diff` — PUT /v1/sites/{cbid}/cookies.
      *
      * @param list<array<string, mixed>> $cookies
-     * @return array<string, mixed> { declared, saved, removed, warnings? }
+     * @return array<string, mixed> { declared, saved, removed, warnings?, dryRun?, diff? }
      */
-    public function declareCookies(string $cbid, array $cookies, bool $replace = false): array
+    public function declareCookies(string $cbid, array $cookies, bool $replace = false, bool $dryRun = false): array
     {
         $body = ['cookies' => $cookies];
         if ($replace) {
             $body['replace'] = true;
         }
-        return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/cookies', $body);
+        return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/cookies' . ($dryRun ? '?dryRun=1' : ''), $body);
     }
 
     /**
      * Remove a declaration; the scanned classification applies again —
-     * DELETE /v1/sites/{cbid}/cookies/{name}.
+     * DELETE /v1/sites/{cbid}/cookies/{name}. With $dryRun nothing is removed and the
+     * answer is the would-be list (`declared`) and a `diff`; otherwise null.
+     *
+     * @return array<string, mixed>|null
      */
-    public function undeclareCookie(string $cbid, string $name): void
+    public function undeclareCookie(string $cbid, string $name, bool $dryRun = false): ?array
     {
-        $this->client->request('DELETE', '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name));
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name);
+        if ($dryRun) {
+            return $this->client->requestJson('DELETE', $path . '?dryRun=1');
+        }
+        $this->client->request('DELETE', $path);
+        return null;
     }
 
     /**

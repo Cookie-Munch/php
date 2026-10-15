@@ -25,6 +25,32 @@ final class PlatformTest extends TestCase
         return new Client('fck_test', 'https://api.example.test', $transport);
     }
 
+    /** Numestri F-01: per-language purposes, and dryRun on every declaration write. */
+    public function testDeclaredCookiesPurposesAndDryRun(): void
+    {
+        $c = $this->client();
+        $c->sites->declareCookie('cb', 'sid', ['category' => 'necessary', 'purpose' => 'Signed in.', 'purposes' => ['es' => 'Sesión.']]);
+        $c->sites->declareCookie('cb', 'sid', ['category' => 'necessary', 'purpose' => 'Signed in.'], true);
+        $c->sites->declareCookies('cb', [['name' => 'a', 'category' => 'necessary', 'purpose' => 'A']], true, true);
+        $out = $c->sites->undeclareCookie('cb', 'sid', true);
+        $this->assertSame(
+            [
+                ['PUT', 'https://api.example.test/v1/sites/cb/cookies/sid'],
+                ['PUT', 'https://api.example.test/v1/sites/cb/cookies/sid?dryRun=1'],
+                ['PUT', 'https://api.example.test/v1/sites/cb/cookies?dryRun=1'],
+                ['DELETE', 'https://api.example.test/v1/sites/cb/cookies/sid?dryRun=1'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['es' => 'Sesión.'], $this->calls[0]['body']['purposes']);
+        $this->assertTrue($this->calls[2]['body']['replace']);
+        $this->assertSame([], $out);
+
+        $none = $this->client(204, '');
+        $this->assertNull($none->sites->undeclareCookie('cb', 'sid'));
+        $this->assertSame('https://api.example.test/v1/sites/cb/cookies/sid', $this->calls[0]['url']);
+    }
+
     public function testOrgMailProvider(): void
     {
         $c = $this->client();
@@ -160,5 +186,26 @@ final class PlatformTest extends TestCase
         $this->assertSame(['hostname' => 'privacy.acme.com'], $this->calls[1]['body']);
         $this->assertSame($base . '/s/rights-page/domains/privacy.acme.com/verify', $this->calls[2]['url']);
         $this->assertSame($base . '/s/rights-page/domains/privacy.acme.com', $this->calls[3]['url']);
+    }
+
+    public function testExecutorWebhookCheckDeliveriesAndDryRuns(): void
+    {
+        $c = $this->client();
+        $c->fulfillment->testExecutorWebhook('ex 1', ['x-sig' => 'v1,abc'], '{"a":1}');
+        $c->fulfillment->executorWebhookDeliveries('ex 1');
+        $c->fulfillment->connectExecutor('crm', 'https://crm.example', 'sk_12345678', ['open' => []], dryRun: true);
+        $c->fulfillment->updateExecutor('ex 1', ['auto' => false], true);
+        $c->fulfillment->updateExecutor('ex 1', ['auto' => false]);
+        $this->assertSame(
+            [
+                ['POST', 'https://api.example.test/v1/dsar/executors/ex%201/webhook/test'],
+                ['GET', 'https://api.example.test/v1/dsar/executors/ex%201/webhook/deliveries'],
+                ['POST', 'https://api.example.test/v1/dsar/executors?dryRun=1'],
+                ['PATCH', 'https://api.example.test/v1/dsar/executors/ex%201?dryRun=1'],
+                ['PATCH', 'https://api.example.test/v1/dsar/executors/ex%201'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['headers' => ['x-sig' => 'v1,abc'], 'body' => '{"a":1}'], $this->calls[0]['body']);
     }
 }
