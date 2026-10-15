@@ -25,6 +25,77 @@ final class PlatformTest extends TestCase
         return new Client('fck_test', 'https://api.example.test', $transport);
     }
 
+    public function testOrgMailProvider(): void
+    {
+        $c = $this->client();
+        $c->org->mailProvider();
+        $c->org->setMailProvider(['provider' => 'resend', 'fromEmail' => 'p@acme.com', 'secret' => 're_x']);
+        $c->org->testMailProvider('me@acme.com');
+        $c->org->testMailProvider();
+        $c->org->removeMailProvider();
+        $this->assertSame(
+            [
+                ['GET', 'https://api.example.test/v1/org/mail-provider'],
+                ['PUT', 'https://api.example.test/v1/org/mail-provider'],
+                ['POST', 'https://api.example.test/v1/org/mail-provider/test'],
+                ['POST', 'https://api.example.test/v1/org/mail-provider/test'],
+                ['DELETE', 'https://api.example.test/v1/org/mail-provider'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['provider' => 'resend', 'fromEmail' => 'p@acme.com', 'secret' => 're_x'], $this->calls[1]['body']);
+        $this->assertSame(['to' => 'me@acme.com'], $this->calls[2]['body']);
+        $this->assertSame([], $this->calls[3]['body']);
+    }
+
+    public function testRightsCaptcha(): void
+    {
+        $c = $this->client();
+        $c->rightsCaptcha->get('s 1');
+        $c->rightsCaptcha->set('s1', ['mode' => 'own', 'provider' => 'hcaptcha', 'siteKey' => 'k-12345678', 'secret' => 'sec']);
+        $c->rightsCaptcha->remove('s1');
+        $c->org->rightsCaptcha();
+        $c->org->setRightsCaptcha(['mode' => 'off']);
+        $c->org->removeRightsCaptcha();
+        $this->assertSame(
+            [
+                ['GET', 'https://api.example.test/v1/sites/s%201/rights-captcha'],
+                ['PUT', 'https://api.example.test/v1/sites/s1/rights-captcha'],
+                ['DELETE', 'https://api.example.test/v1/sites/s1/rights-captcha'],
+                ['GET', 'https://api.example.test/v1/org/rights-captcha'],
+                ['PUT', 'https://api.example.test/v1/org/rights-captcha'],
+                ['DELETE', 'https://api.example.test/v1/org/rights-captcha'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['mode' => 'own', 'provider' => 'hcaptcha', 'siteKey' => 'k-12345678', 'secret' => 'sec'], $this->calls[1]['body']);
+        $this->assertSame(['mode' => 'off'], $this->calls[4]['body']);
+    }
+
+    public function testRightsIdentity(): void
+    {
+        $c = $this->client();
+        $c->rightsIdentity->get('s 1');
+        $c->rightsIdentity->set('s1', ['type' => 'clerk', 'issuer' => 'https://clerk.acme.example', 'authorizedParties' => ['https://www.acme.example']]);
+        $c->rightsIdentity->remove('s1');
+        $c->org->rightsIdentity();
+        $c->org->setRightsIdentity(['type' => 'oidc_jwt', 'issuer' => 'https://id.acme.example', 'jwksUrl' => 'https://id.acme.example/keys']);
+        $c->org->removeRightsIdentity();
+        $this->assertSame(
+            [
+                ['GET', 'https://api.example.test/v1/sites/s%201/rights-identity'],
+                ['PUT', 'https://api.example.test/v1/sites/s1/rights-identity'],
+                ['DELETE', 'https://api.example.test/v1/sites/s1/rights-identity'],
+                ['GET', 'https://api.example.test/v1/org/rights-identity'],
+                ['PUT', 'https://api.example.test/v1/org/rights-identity'],
+                ['DELETE', 'https://api.example.test/v1/org/rights-identity'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['type' => 'clerk', 'issuer' => 'https://clerk.acme.example', 'authorizedParties' => ['https://www.acme.example']], $this->calls[1]['body']);
+        $this->assertSame(['type' => 'oidc_jwt', 'issuer' => 'https://id.acme.example', 'jwksUrl' => 'https://id.acme.example/keys'], $this->calls[4]['body']);
+    }
+
     public function testDeprovisionSuspendsByDefaultAndPurgesOnlyWhenAsked(): void
     {
         $c = $this->client(204, '');
@@ -74,5 +145,20 @@ final class PlatformTest extends TestCase
             $this->assertStringNotContainsString('abc', $call['url']);
             $this->assertSame($ids, $call['body']['identifiers']);
         }
+    }
+
+    public function testRightsPageDomains(): void
+    {
+        $c = $this->client();
+        $c->rightsPage->listDomains('s 1');
+        $c->rightsPage->addDomain('s', 'privacy.acme.com');
+        $c->rightsPage->verifyDomain('s', 'privacy.acme.com');
+        $c->rightsPage->removeDomain('s', 'privacy.acme.com');
+        $base = 'https://api.example.test/v1/sites';
+        $this->assertSame(['GET', 'POST', 'POST', 'DELETE'], array_column($this->calls, 'method'));
+        $this->assertSame($base . '/s%201/rights-page/domains', $this->calls[0]['url']);
+        $this->assertSame(['hostname' => 'privacy.acme.com'], $this->calls[1]['body']);
+        $this->assertSame($base . '/s/rights-page/domains/privacy.acme.com/verify', $this->calls[2]['url']);
+        $this->assertSame($base . '/s/rights-page/domains/privacy.acme.com', $this->calls[3]['url']);
     }
 }

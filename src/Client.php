@@ -28,7 +28,11 @@ use CookieMunch\Resources\Ai;
 use CookieMunch\Resources\Fulfillment;
 use CookieMunch\Resources\Regulatory;
 use CookieMunch\Resources\Reseller;
+use CookieMunch\Resources\RightsPage;
 use CookieMunch\Resources\Subjects;
+use CookieMunch\Resources\RightsLinks;
+use CookieMunch\Resources\RightsCaptcha;
+use CookieMunch\Resources\RightsIdentity;
 use CookieMunch\Resources\Assets;
 
 /**
@@ -61,6 +65,7 @@ final class Client
     public readonly Vendors $vendors;
     public readonly Ropa $ropa;
     public readonly BrandKits $brandKits;
+    public readonly RightsPage $rightsPage;
     public readonly Preferences $preferences;
     public readonly Members $members;
     public readonly Keys $keys;
@@ -77,6 +82,9 @@ final class Client
     public readonly Regulatory $regulatory;
     public readonly Reseller $reseller;
     public readonly Subjects $subjects;
+    public readonly RightsLinks $rightsLinks;
+    public readonly RightsCaptcha $rightsCaptcha;
+    public readonly RightsIdentity $rightsIdentity;
     public readonly Org $org;
     public readonly Assets $assets;
 
@@ -101,6 +109,7 @@ final class Client
         $this->vendors = new Vendors($this);
         $this->ropa = new Ropa($this);
         $this->brandKits = new BrandKits($this);
+        $this->rightsPage = new RightsPage($this);
         $this->preferences = new Preferences($this);
         $this->members = new Members($this);
         $this->keys = new Keys($this);
@@ -117,6 +126,9 @@ final class Client
         $this->regulatory = new Regulatory($this);
         $this->reseller = new Reseller($this);
         $this->subjects = new Subjects($this);
+        $this->rightsLinks = new RightsLinks($this);
+        $this->rightsCaptcha = new RightsCaptcha($this);
+        $this->rightsIdentity = new RightsIdentity($this);
         $this->org = new Org($this);
         $this->assets = new Assets($this);
     }
@@ -238,12 +250,12 @@ final class Client
     /**
      * Perform a request and return the decoded JSON body as an associative array.
      *
-     * @param array<string, mixed>|null                       $body
+     * @param array<string, mixed>|\stdClass|null             $body  A \stdClass is sent as a JSON object even when empty.
      * @param array<string, int|string|bool|null>|null        $query
      *
      * @return array<string, mixed>
      */
-    public function requestJson(string $method, string $path, ?array $body = null, ?array $query = null): array
+    public function requestJson(string $method, string $path, array|\stdClass|null $body = null, ?array $query = null): array
     {
         $result = $this->request($method, $path, $body, $query);
 
@@ -253,7 +265,7 @@ final class Client
     /**
      * Perform a request against the API.
      *
-     * @param array<string, mixed>|null                $body  JSON request body, or null for none.
+     * @param array<string, mixed>|\stdClass|null      $body  JSON request body, or null for none (a \stdClass is always an object).
      * @param array<string, int|string|bool|null>|null $query Query parameters (null values dropped).
      * @param bool                                     $raw   When true, return the raw response body as a string.
      *
@@ -262,7 +274,7 @@ final class Client
      * @throws ApiException     On any non-2xx response.
      * @throws TransportException On a transport-level failure.
      */
-    public function request(string $method, string $path, ?array $body = null, ?array $query = null, bool $raw = false): array|string|null
+    public function request(string $method, string $path, array|\stdClass|null $body = null, ?array $query = null, bool $raw = false): array|string|null
     {
         $url = $this->baseUrl . $path . $this->buildQuery($query);
 

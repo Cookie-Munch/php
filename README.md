@@ -26,7 +26,6 @@ require 'vendor/autoload.php';
 use CookieMunch\Client;
 
 $cm = new CookieMunch\Client('fck_live_...');            // default base: https://api.cookiemunch.net
-// $cm = new CookieMunch\Client('fck_live_...', 'https://cmp.example.com');
 
 $me = $cm->me();                                          // GET /v1/me → { orgId, plan, keyPrefix }
 
@@ -82,14 +81,18 @@ try {
 | Group | Methods |
 |---|---|
 | `$cm->me()` / `$cm->usage()` / `$cm->audit()` | identity; org usage; audit log (newest first) |
-| `$cm->org` | `get`, `update` — `update(['logoUrl' => null])` removes the logo; omit the key to leave it unchanged |
+| `$cm->org` | `get`, `update` — `update(['logoUrl' => null])` removes the logo; omit the key to leave it unchanged; your own provider for rights-request mail: `mailProvider`, `setMailProvider`, `testMailProvider`, `removeMailProvider` (no code mail until a test succeeds; there is no shared sender); the default captcha and sign-in provider for rights pages: `rightsCaptcha`, `setRightsCaptcha`, `removeRightsCaptcha`, `rightsIdentity`, `setRightsIdentity`, `removeRightsIdentity` |
+| `$cm->rightsCaptcha` | `get`, `set`, `remove` — a site's own rights-page captcha (your keys, or off) |
+| `$cm->rightsIdentity` | `get`, `set`, `remove` — a site's sign-in provider (`clerk`, `atlas` or `oidc_jwt`): a signed-in visitor is verified by their session, with no code mail; a site without its own uses the org default |
 | `$cm->assets` | `upload` — base64 image, returns `{ url }` |
-| `$cm->sites` | `list`, `create`, `get`, `delete`, `getConfig`, `putConfig`, `patchConfig`, `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
+| `$cm->sites` | `list`, `create`, `get`, `delete`, `getConfig`, `putConfig`, `patchConfig`, `lintConfig` (consent-button parity, nothing saved), `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
 | `$cm->consent` | `ingest`, `stats`, `log`, `export`, `receipt`, `eraseSubject`, `exportSubject` |
 | `$cm->dsar` | `list`, `create`, `advance`, `response` (plain-text notice), `erase`, `export` |
 | `$cm->vendors` | `list`, `create` |
 | `$cm->ropa` | `list`, `create`, `exportCsv` (CSV string) |
 | `$cm->brandKits` | `list`, `create`, `delete` |
+| `$cm->rightsPage` | `get`, `put`, `patch`, `dryRun`, `getPublished`, `publish`, `versions`, `rollback` — `publish($cbid, $baseUpdatedAt)` / `rollback($cbid, $v, $baseUpdatedAt)` go live only if the draft is still the one you read (a rollback replaces the draft); `get()` → `put()` round-trips unchanged; custom domains `listDomains`, `addDomain`, `verifyDomain`, `removeDomain` |
+| `$cm->rightsLinks` | `create` — a signed, single-use link to the rights page for a signed-in person |
 | `$cm->preferences` | `list`, `save`, `get` |
 | `$cm->members` | `list`, `invite`, `setRole`, `remove` |
 | `$cm->keys` | `list`, `issue` — pass `scopes` and/or `cbids` for a least-privilege key, `revoke`, `roll`, `update` |

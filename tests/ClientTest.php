@@ -378,4 +378,84 @@ final class ClientTest extends TestCase
         $decoded = json_decode((string) $this->requests[0]['body'], true);
         $this->assertSame(['cbid' => 'cb_1', 'stamp' => 'stamp_1'], $decoded);
     }
+
+    public function testRightsLinksCreateSendsTheSubjectAndOptions(): void
+    {
+        $client = $this->client(fn () => ['status' => 201, 'body' => '{"url":"https://cookiemunch.net/r/cb_1?t=a.b","expiresAt":1}']);
+
+        $out = $client->rightsLinks->create('cb_1', 'p@x.com', 'u-1', ['access'], 600);
+
+        $this->assertSame('https://cookiemunch.net/r/cb_1?t=a.b', $out['url']);
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/sites/cb_1/rights-links', $this->requests[0]['url']);
+        $this->assertSame(['subject' => ['email' => 'p@x.com', 'userId' => 'u-1'], 'rights' => ['access'], 'ttlSeconds' => 600], json_decode((string) $this->requests[0]['body'], true));
+
+        $client->rightsLinks->create('cb_1', 'p@x.com');
+        $this->assertSame(['subject' => ['email' => 'p@x.com']], json_decode((string) $this->requests[1]['body'], true));
+    }
+
+    private const DEFAULT_DRAFT = '{"cbid":"cb_1","draft":{"v":1,"theme":{"preset":"brand","width":"normal","density":"comfortable","colorScheme":"light"},"sections":[{"id":"request","type":"form","props":{}}],"form":{"requestTypes":[{"id":"access","enabled":true,"maps":"access","verification":"email_code"}],"fields":[{"name":"details","type":"textarea","label":"","required":false,"max":5000}],"jurisdiction":"ask","consentIdField":"optional","success":{}},"i18n":{"defaultLocale":"en","autoDetect":true,"overrides":{}},"seo":{"index":false}},"version":0,"publishedAt":null,"updatedAt":null,"warnings":[]}';
+
+    public function testRightsPageDefaultDraftRoundTripsWithItsEmptyObjects(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => self::DEFAULT_DRAFT]);
+        $d = $client->rightsPage->get('cb_1');
+        $client->rightsPage->put('cb_1', $d['draft'] + ['baseUpdatedAt' => $d['updatedAt']]);
+        $sent = (string) $this->requests[1]['body'];
+        $expected = json_decode(self::DEFAULT_DRAFT, false)->draft;
+        $expected->baseUpdatedAt = null;
+        $this->assertSame(json_encode($expected), $sent);
+        $this->assertStringContainsString('"props":{}', $sent);
+        $this->assertStringContainsString('"overrides":{}', $sent);
+        $this->assertStringContainsString('"success":{}', $sent);
+        // lists stay lists, even empty ones
+        $client->rightsPage->patch('cb_1', ['sections' => [], 'seo' => [], 'i18n' => ['overrides' => ['de' => ['sections' => [], 'form' => ['fields' => []]]]]]);
+        $this->assertSame('{"sections":[],"seo":{},"i18n":{"overrides":{"de":{"sections":{},"form":{"fields":{}}}}}}', (string) $this->requests[2]['body']);
+        $client->rightsPage->dryRun('cb_1', ['sections' => [['id' => 'h', 'type' => 'hero', 'hidden' => [], 'style' => [], 'props' => ['title' => 'T', 'showLogo' => true]]]]);
+        $this->assertSame('{"sections":[{"id":"h","type":"hero","hidden":{},"style":{},"props":{"title":"T","showLogo":true}}]}', (string) $this->requests[3]['body']);
+        $this->assertSame('https://api.example.test/v1/sites/cb_1/rights-page?dryRun=1', $this->requests[3]['url']);
+    }
+
+    public function testRightsPageMapsKeyedByDigitOnlyIdsStayObjects(): void
+    {
+        // Section ids of the caller's choosing may be digits; json_decode makes them int keys 0, 1, ...
+        // which json_encode would turn into a list (and the API answers 422).
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{}']);
+        $patch = json_decode('{"i18n":{"overrides":{"de":{"sections":{"0":{"title":"A"},"1":{"title":"B"}},"form":{"fields":{"0":{"label":"L"}}}}}}}', true);
+        $client->rightsPage->patch('cb_1', $patch);
+        $this->assertSame('{"i18n":{"overrides":{"de":{"sections":{"0":{"title":"A"},"1":{"title":"B"}},"form":{"fields":{"0":{"label":"L"}}}}}}}', (string) $this->requests[0]['body']);
+    }
+
+    public function testRightsPagePublishAndRollbackSendBaseUpdatedAtIncludingNull(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{}']);
+        $client->rightsPage->publish('cb_1');
+        $client->rightsPage->publish('cb_1', 7);
+        $client->rightsPage->publish('cb_1', null);
+        $client->rightsPage->rollback('cb_1', 2);
+        $client->rightsPage->rollback('cb_1', 2, '2026-10-14T00:00:00.000Z');
+        $client->rightsPage->rollback('cb_1', 2, null);
+        $bodies = array_map(fn ($r) => (string) $r['body'], $this->requests);
+        $this->assertSame([
+            '{}',
+            '{"baseUpdatedAt":7}',
+            '{"baseUpdatedAt":null}',
+            '{"version":2}',
+            '{"version":2,"baseUpdatedAt":"2026-10-14T00:00:00.000Z"}',
+            '{"version":2,"baseUpdatedAt":null}',
+        ], $bodies);
+        $this->assertSame('https://api.example.test/v1/sites/cb_1/rights-page/rollback', $this->requests[3]['url']);
+    }
+
+    public function testLintConfigPostsToLintAndReplaceAddsTheFlag(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{"mode":"merged","designWarnings":[],"score":100,"suggestedReject":[]}']);
+        $r = $client->sites->lintConfig('cb_1', ['banner' => ['type' => 'accept-only']]);
+        $this->assertSame(100, $r['score']);
+        $this->assertSame('POST', $this->requests[0]['method']);
+        $this->assertSame('https://api.example.test/v1/sites/cb_1/config/lint', $this->requests[0]['url']);
+        $this->assertSame('{"banner":{"type":"accept-only"}}', (string) $this->requests[0]['body']);
+        $client->sites->lintConfig('cb_1', ['v' => 2], true);
+        $this->assertSame('https://api.example.test/v1/sites/cb_1/config/lint?replace=1', $this->requests[1]['url']);
+    }
 }

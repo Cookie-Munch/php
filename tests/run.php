@@ -134,5 +134,22 @@ $client = makeClient(fn () => ['status' => 200, 'headers' => ['Content-Type' => 
 $out = $client->consent->export('cb_1');
 check($out === $csv, 'export returns raw CSV string');
 
+// 7. Rights page: the default draft survives GET → PUT with its empty objects intact.
+echo "Rights page round trip\n";
+$captured = [];
+$default = '{"cbid":"cb_1","draft":{"v":1,"theme":{"preset":"brand","width":"normal","density":"comfortable","colorScheme":"light"},"sections":[{"id":"request","type":"form","props":{}}],"form":{"requestTypes":[{"id":"access","enabled":true,"maps":"access","verification":"email_code"}],"fields":[{"name":"details","type":"textarea","label":"","required":false,"max":5000}],"jurisdiction":"ask","consentIdField":"optional","success":{}},"i18n":{"defaultLocale":"en","autoDetect":true,"overrides":{}},"seo":{"index":false}},"version":0,"publishedAt":null,"updatedAt":null,"warnings":[]}';
+$client = makeClient(fn () => ['status' => 200, 'body' => $default], $captured);
+$d = $client->rightsPage->get('cb_1');
+$client->rightsPage->put('cb_1', $d['draft'] + ['baseUpdatedAt' => $d['updatedAt']]);
+$expected = json_decode($default, false)->draft;
+$expected->baseUpdatedAt = null;
+check($captured[1]['body'] === json_encode($expected), 'default draft PUT back is byte-identical ({} stays {})');
+$client->rightsPage->publish('cb_1', null);
+check($captured[2]['body'] === '{"baseUpdatedAt":null}', 'publish sends baseUpdatedAt null');
+$client->rightsPage->rollback('cb_1', 2, 7);
+check($captured[3]['body'] === '{"version":2,"baseUpdatedAt":7}', 'rollback sends version and baseUpdatedAt');
+$client->rightsPage->publish('cb_1');
+check($captured[4]['body'] === '{}', 'publish without a base sends {}');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed === 0 ? 0 : 1);

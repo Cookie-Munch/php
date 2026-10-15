@@ -110,6 +110,22 @@ final class Sites
     }
 
     /**
+     * Check a proposed config for consent-button parity without saving it —
+     * POST /v1/sites/{cbid}/config/lint: is "Accept all" more prominent than "Reject all"
+     * anywhere (colour, size, placement, copy, custom CSS)? Returns `designWarnings`,
+     * `score` (0-100) and `suggestedReject`. It checks exactly what the write would store:
+     * merged as patchConfig would, or with $replace replaced as putConfig would. Needs only
+     * sites:read.
+     *
+     * @param array<string,mixed> $config
+     * @return array<string,mixed>
+     */
+    public function lintConfig(string $cbid, array $config, bool $replace = false): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/config/lint' . ($replace ? '?replace=1' : ''), $config);
+    }
+
+    /**
      * Latest categorized cookie declaration — GET /v1/sites/{cbid}/cookies.
      * Returns { updatedAt, cookies: CategorizedCookie[] } (authoritative OpenAPI shape).
      *
