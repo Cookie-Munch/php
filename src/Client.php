@@ -98,6 +98,8 @@ final class Client
         private readonly string $apiKey,
         string $baseUrl = self::DEFAULT_BASE_URL,
         ?Transport $transport = null,
+        /** Send `Prefer: strict-unknown-fields` on writes: an undeclared body field is refused (400 unknown_field). */
+        private readonly bool $strictUnknownFields = false,
     ) {
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->transport = $transport ?? new CurlTransport();
@@ -201,6 +203,29 @@ final class Client
     }
 
     /**
+     * Every link a site's privacy wiring depends on, one row each with `ok` (null = could not
+     * check) and a `fixHint` — GET /v1/integration-health. $cbid may be omitted with one site.
+     *
+     * @return array<string, mixed> { cbid, checkedAt, ok, counts, checks }
+     */
+    public function integrationHealth(?string $cbid = null): array
+    {
+        return $this->requestJson('GET', '/v1/integration-health' . ($cbid !== null ? '?cbid=' . rawurlencode($cbid) : ''));
+    }
+
+    /**
+     * Wire a product's privacy in one call — POST /v1/provision. Idempotent; $dryRun writes
+     * nothing anywhere. Secrets in $input are used for this request only; none is returned.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed> { dryRun, product, cbid, steps, summary }
+     */
+    public function provision(array $input, bool $dryRun = false): array
+    {
+        return $this->requestJson('POST', '/v1/provision' . ($dryRun ? '?dryRun=1' : ''), $input);
+    }
+
+    /**
      * The organisation's audit log, newest first — GET /v1/audit. Sign-ins aside, every
      * administrative change made in the dashboard or through the API, with who made it;
      * API actions are attributed to `apikey:<prefix>`. Requires an unscoped key that is not
@@ -284,6 +309,9 @@ final class Client
             'Accept' => 'application/json',
             'User-Agent' => $this->userAgent,
         ];
+        if ($this->strictUnknownFields && strtoupper($method) !== 'GET') {
+            $headers['Prefer'] = 'strict-unknown-fields';
+        }
 
         $encodedBody = null;
         if ($body !== null) {

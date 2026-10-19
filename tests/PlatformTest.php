@@ -209,6 +209,27 @@ final class PlatformTest extends TestCase
         $this->assertSame(['headers' => ['x-sig' => 'v1,abc'], 'body' => '{"a":1}'], $this->calls[0]['body']);
     }
 
+    public function testExecutorPresetsCanaryAndUpgrade(): void
+    {
+        $c = $this->client();
+        $c->fulfillment->executorPresets();
+        $c->fulfillment->connectExecutorPreset('forumulate', 'fck_12345678', ['orgId' => 'org-1']);
+        $c->fulfillment->testExecutor('ex 1', canary: true);
+        $c->fulfillment->upgradeExecutorPreset('ex 1', ['atlasIdAppId' => 'app_1'], true);
+        $this->assertSame(
+            [
+                ['GET', 'https://api.example.test/v1/dsar/executors/presets'],
+                ['POST', 'https://api.example.test/v1/dsar/executors'],
+                ['POST', 'https://api.example.test/v1/dsar/executors/ex%201/test'],
+                ['POST', 'https://api.example.test/v1/dsar/executors/ex%201/upgrade-preset?dryRun=1'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['preset' => 'forumulate', 'secretKey' => 'fck_12345678', 'orgId' => 'org-1'], $this->calls[1]['body']);
+        $this->assertSame(['canary' => true], $this->calls[2]['body']);
+        $this->assertSame(['atlasIdAppId' => 'app_1'], $this->calls[3]['body']);
+    }
+
     public function testRetireAndUnretire(): void
     {
         $c = $this->client();

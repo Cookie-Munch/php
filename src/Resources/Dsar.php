@@ -80,9 +80,13 @@ final class Dsar
      *
      * @return array<string, mixed>
      */
-    public function advance(string $id, string $toStatus): array
+    public function advance(string $id, string $toStatus, ?string $messageToSubject = null): array
     {
-        return $this->client->requestJson('POST', '/v1/dsar/' . rawurlencode($id) . '/advance', ['toStatus' => $toStatus]);
+        $body = ['toStatus' => $toStatus];
+        if ($messageToSubject !== null) {
+            $body['messageToSubject'] = $messageToSubject;
+        }
+        return $this->client->requestJson('POST', '/v1/dsar/' . rawurlencode($id) . '/advance', $body);
     }
 
     /** The subject-facing response notice for a request, as plain text — GET /v1/dsar/{id}/response. */

@@ -51,10 +51,62 @@ final class Sites
         return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid));
     }
 
+    /**
+     * Rename or move a site — PATCH /v1/sites/{cbid} with any of `domain`, `name` (null clears it)
+     * and `aliases` ([] clears them). The cbid and the consent ledger stay; a domain move clears
+     * verification. $dryRun answers with the diff and its effects, storing nothing.
+     *
+     * @param array{domain?: string, name?: string|null, aliases?: list<string>} $patch
+     * @return array<string, mixed> { site, diff, effects, warnings?, dryRun? }
+     */
+    public function update(string $cbid, array $patch, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('PATCH', '/v1/sites/' . self::enc($cbid) . ($dryRun ? '?dryRun=1' : ''), $patch);
+    }
+
     /** Delete a site — DELETE /v1/sites/{cbid}. */
     public function delete(string $cbid): void
     {
         $this->client->request('DELETE', '/v1/sites/' . self::enc($cbid));
+    }
+
+    /**
+     * Partner links and the partner catalogue — GET /v1/sites/{cbid}/partners.
+     *
+     * @return array<string, mixed> { links, partners }
+     */
+    public function listPartners(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/partners');
+    }
+
+    /**
+     * Grant a partner platform ('forumulate', 'atlas') the site's consent events — POST
+     * /v1/sites/{cbid}/partners. No secret is created; idempotent.
+     *
+     * @param list<string>|null $events
+     * @return array<string, mixed> { change, link, dryRun? }
+     */
+    public function linkPartner(string $cbid, string $partner, string $externalId, ?string $label = null, ?array $events = null, bool $dryRun = false): array
+    {
+        $body = ['partner' => $partner, 'externalId' => $externalId];
+        if ($label !== null) {
+            $body['label'] = $label;
+        }
+        if ($events !== null) {
+            $body['events'] = $events;
+        }
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/partners' . ($dryRun ? '?dryRun=1' : ''), $body);
+    }
+
+    /**
+     * Revoke a partner link — DELETE /v1/sites/{cbid}/partners/{linkId}. Deliveries stop at once.
+     *
+     * @return array<string, mixed> { link }
+     */
+    public function unlinkPartner(string $cbid, string $linkId): array
+    {
+        return $this->client->requestJson('DELETE', '/v1/sites/' . self::enc($cbid) . '/partners/' . self::enc($linkId));
     }
 
     /**
@@ -418,6 +470,76 @@ final class Sites
         }
         $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/' . rawurlencode($name) . '/retire' . ($dryRun ? '?dryRun=1' : '');
         return $this->client->requestJson('POST', $path, (object) $body);
+    }
+
+    /**
+     * Every declaration preset (atlas, forumulate, chatly, cookiemunch): its parameters, what
+     * it has declared on this site, and whether the vendor's manifest exists yet —
+     * GET /v1/sites/{cbid}/cookies/presets.
+     *
+     * @return array<string, mixed> { presets }
+     */
+    public function cookiePresets(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . rawurlencode($cbid) . '/cookies/presets');
+    }
+
+    /**
+     * Apply (or re-sync) a vendor preset: declares what that platform writes, marked
+     * `vendor` — PUT /v1/sites/{cbid}/cookies/presets/{vendor}. Atlas takes
+     * `frontendApiHost`/`crossSubdomainCookies`; Chatly `publicId`/`dragging`/`category`.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed> { vendor, cookies, removed, skipped?, note?, manifest }
+     */
+    public function applyCookiePreset(string $cbid, string $vendor, array $params = [], bool $dryRun = false): array
+    {
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/presets/' . rawurlencode($vendor) . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('PUT', $path, (object) $params);
+    }
+
+    /**
+     * Remove every declaration a vendor preset made — DELETE /v1/sites/{cbid}/cookies/presets/{vendor}.
+     *
+     * @return array<string, mixed> { vendor, removed }
+     */
+    public function removeCookiePreset(string $cbid, string $vendor, bool $dryRun = false): array
+    {
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/presets/' . rawurlencode($vendor) . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('DELETE', $path);
+    }
+
+    /**
+     * Remove every stored (scanned or observed) row of this name; a declaration stays —
+     * DELETE /v1/sites/{cbid}/observed-cookies/{name}. With $dryRun nothing is removed.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function deleteObservedCookie(string $cbid, string $name, bool $dryRun = false): ?array
+    {
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/observed-cookies/' . rawurlencode($name);
+        if ($dryRun) {
+            return $this->client->requestJson('DELETE', $path . '?dryRun=1');
+        }
+        $this->client->request('DELETE', $path);
+        return null;
+    }
+
+    /**
+     * Purge observed since T: remove every row a real visit first reported at or after
+     * $since (and before $until) — ISO-8601 or epoch ms. Crawled rows and declarations stay —
+     * POST /v1/sites/{cbid}/observed-cookies/purge.
+     *
+     * @return array<string, mixed> { removed, count, since, until?, dryRun? }
+     */
+    public function purgeObservedCookies(string $cbid, string|int $since, string|int|null $until = null, bool $dryRun = false): array
+    {
+        $body = ['since' => $since];
+        if ($until !== null) {
+            $body['until'] = $until;
+        }
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/observed-cookies/purge' . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('POST', $path, $body);
     }
 
     /**

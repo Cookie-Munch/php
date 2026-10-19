@@ -35,7 +35,7 @@ final class Keys
      * the whole org. A key locked with `cbids` works only on those sites and on no org-wide
      * endpoint.
      *
-     * @param array{name?: string, scopes?: list<string>, cbids?: list<string>, expiresInDays?: int} $input
+     * @param array{name?: string, scopes?: list<string>, cbids?: list<string>, expiresInDays?: int, expiresAt?: int|string} $input
      *
      * @return array<string, mixed>
      */
@@ -65,12 +65,26 @@ final class Keys
      * Rename a key, or replace its scopes or the properties it is locked to — PATCH
      * /v1/keys/{prefix}. Only the fields sent change; the secret is unchanged.
      *
-     * @param array{name?: string, scopes?: list<string>, cbids?: list<string>} $patch
+     * `expiresAt` sets the expiry (epoch ms or ISO date-time); `'expiresAt' => null` removes it.
+     *
+     * @param array{name?: string, scopes?: list<string>, cbids?: list<string>, expiresAt?: int|string|null} $patch
      *
      * @return array<string, mixed>
      */
     public function update(string $prefix, array $patch): array
     {
         return $this->client->requestJson('PATCH', '/v1/keys/' . rawurlencode($prefix), $patch);
+    }
+
+    /**
+     * Key hygiene — GET /v1/keys/report: keys unused for $unusedDays (default 90), keys with
+     * broad access, and keys expiring within $expiringDays (default 14), each with a reason.
+     *
+     * @return array<string, mixed> { generatedAt, unused, broad, expiringSoon, noExpiry, total, ... }
+     */
+    public function report(?int $unusedDays = null, ?int $expiringDays = null): array
+    {
+        $q = array_filter(['unusedDays' => $unusedDays, 'expiringDays' => $expiringDays], static fn ($v) => $v !== null);
+        return $this->client->requestJson('GET', '/v1/keys/report' . ($q ? '?' . http_build_query($q) : ''));
     }
 }

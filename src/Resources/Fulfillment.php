@@ -85,6 +85,52 @@ public function connectExecutor(
 }
 
 /**
+ * Connect a system from a versioned preset — POST /v1/dsar/executors {preset}. `atlas`
+ * (optional `atlasIdAppId`), `forumulate` (`orgId`), `cm-standard-v1` (`baseUrl` and `system`)
+ * or `chatly`. The response carries presetVersion and presetDiff. A preset waiting on another
+ * platform's API is refused (409 preset_waiting_on_platform); see executorPresets().
+ *
+ * @param array{system?: string, baseUrl?: string, orgId?: string, atlasIdAppId?: string, presetVersion?: int, webhookSecret?: string, auto?: bool, cbid?: string} $options
+ *
+ * @return array<string, mixed>
+ */
+public function connectExecutorPreset(string $preset, string $secretKey, array $options = [], bool $dryRun = false): array
+{
+    $body = ['preset' => $preset, 'secretKey' => $secretKey] + $options;
+
+    return $this->client->requestJson('POST', '/v1/dsar/executors' . ($dryRun ? '?dryRun=1' : ''), $body);
+}
+
+/**
+ * The versioned presets, whether each is usable now or waits on another platform, and the
+ * organisation's canary address — GET /v1/dsar/executors/presets.
+ *
+ * @return array<string, mixed>
+ */
+public function executorPresets(): array
+{
+    return $this->client->requestJson('GET', '/v1/dsar/executors/presets');
+}
+
+/**
+ * Rebuild a connection from its preset's latest version (or `presetVersion`), keeping its id
+ * and credential; `preset` adopts one on a hand-written connection — POST
+ * /v1/dsar/executors/{id}/upgrade-preset. Answers with a diff; `$dryRun` changes nothing.
+ *
+ * @param array{preset?: string, presetVersion?: int, orgId?: string, atlasIdAppId?: string} $input
+ *
+ * @return array<string, mixed>
+ */
+public function upgradeExecutorPreset(string $id, array $input = [], bool $dryRun = false): array
+{
+    return $this->client->requestJson(
+        'POST',
+        '/v1/dsar/executors/' . rawurlencode($id) . '/upgrade-preset' . ($dryRun ? '?dryRun=1' : ''),
+        (object) $input,
+    );
+}
+
+/**
  * Change a connection in place — PATCH /v1/dsar/executors/{id}. Only the keys you pass change;
  * the credential is kept unless `secretKey` is given, and `webhookSecret => null` removes it.
  * `$dryRun` (?dryRun=1) returns the would-be connection and a diff, and changes nothing.
@@ -130,13 +176,20 @@ public function executorWebhookDeliveries(string $id): array
 /**
  * Try a connection against one email without filing a request — POST /v1/dsar/executors/{id}/test.
  * Runs the lookup and returns the raw (redacted) upstream answers. `open: true` on an export
- * opens and polls a real export once; an erasure is never sent.
+ * opens and polls a real export once; an erasure is never sent. `canary: true` (instead of an
+ * email) uses the org canary address — no real person — and a canary locate updates health.
  *
  * @return array<string, mixed>
  */
-public function testExecutor(string $id, string $email, ?string $operation = null, ?bool $open = null): array
+public function testExecutor(string $id, ?string $email = null, ?string $operation = null, ?bool $open = null, ?bool $canary = null): array
 {
-    $body = ['email' => $email];
+    $body = [];
+    if ($email !== null) {
+        $body['email'] = $email;
+    }
+    if ($canary !== null) {
+        $body['canary'] = $canary;
+    }
     if ($operation !== null) {
         $body['operation'] = $operation;
     }
@@ -144,7 +197,7 @@ public function testExecutor(string $id, string $email, ?string $operation = nul
         $body['open'] = $open;
     }
 
-    return $this->client->requestJson('POST', '/v1/dsar/executors/' . rawurlencode($id) . '/test', $body);
+    return $this->client->requestJson('POST', '/v1/dsar/executors/' . rawurlencode($id) . '/test', (object) $body);
 }
 
 /** @return array<string, mixed> One task: status history (events), upstream log, versions. */
