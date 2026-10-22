@@ -473,7 +473,7 @@ final class Sites
     }
 
     /**
-     * Every declaration preset (atlas, forumulate, chatly, cookiemunch): its parameters, what
+     * Every declaration preset (atlas, forumulate, chatly, cookiemunch, referally): its parameters, what
      * it has declared on this site, and whether the vendor's manifest exists yet —
      * GET /v1/sites/{cbid}/cookies/presets.
      *
@@ -487,7 +487,8 @@ final class Sites
     /**
      * Apply (or re-sync) a vendor preset: declares what that platform writes, marked
      * `vendor` — PUT /v1/sites/{cbid}/cookies/presets/{vendor}. Atlas takes
-     * `frontendApiHost`/`crossSubdomainCookies`; Chatly `publicId`/`dragging`/`category`.
+     * `frontendApiHost`/`crossSubdomainCookies`; Chatly `publicId`/`dragging`/`category`;
+     * Referally `cookieDomain`/`cookieDays`/`category`.
      *
      * @param array<string, mixed> $params
      * @return array<string, mixed> { vendor, cookies, removed, skipped?, note?, manifest }

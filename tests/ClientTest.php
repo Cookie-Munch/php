@@ -33,6 +33,17 @@ final class ClientTest extends TestCase
         return new Client($apiKey, 'https://api.example.test', $transport);
     }
 
+    public function testUserAgentDefaultsToSdkAndVersionAndCanBeOverridden(): void
+    {
+        $client = $this->client(fn () => ['status' => 200, 'body' => '{}']);
+        $client->me();
+        $this->assertSame('cookiemunch-php/' . Client::VERSION, $this->requests[0]['headers']['User-Agent']);
+
+        $client->setUserAgent('acme/2');
+        $client->me();
+        $this->assertSame('acme/2', $this->requests[1]['headers']['User-Agent']);
+    }
+
     public function testSendsBearerAndApiKeyAuthHeaders(): void
     {
         $client = $this->client(fn () => ['status' => 200, 'body' => '{"orgId":"org_1","plan":"pro","keyPrefix":"fck_test"}']);
