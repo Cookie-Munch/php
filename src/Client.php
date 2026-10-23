@@ -32,6 +32,8 @@ use CookieMunch\Resources\RightsPage;
 use CookieMunch\Resources\Subjects;
 use CookieMunch\Resources\RightsLinks;
 use CookieMunch\Resources\RightsCaptcha;
+use CookieMunch\Resources\ConsentSyncSecret;
+use CookieMunch\Resources\PreferenceCenter;
 use CookieMunch\Resources\RightsIdentity;
 use CookieMunch\Resources\Assets;
 
@@ -84,6 +86,8 @@ final class Client
     public readonly Subjects $subjects;
     public readonly RightsLinks $rightsLinks;
     public readonly RightsCaptcha $rightsCaptcha;
+    public readonly ConsentSyncSecret $consentSyncSecret;
+    public readonly PreferenceCenter $preferenceCenter;
     public readonly RightsIdentity $rightsIdentity;
     public readonly Org $org;
     public readonly Assets $assets;
@@ -130,6 +134,8 @@ final class Client
         $this->subjects = new Subjects($this);
         $this->rightsLinks = new RightsLinks($this);
         $this->rightsCaptcha = new RightsCaptcha($this);
+        $this->consentSyncSecret = new ConsentSyncSecret($this);
+        $this->preferenceCenter = new PreferenceCenter($this);
         $this->rightsIdentity = new RightsIdentity($this);
         $this->org = new Org($this);
         $this->assets = new Assets($this);

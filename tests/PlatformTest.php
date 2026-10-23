@@ -51,6 +51,23 @@ final class PlatformTest extends TestCase
         $this->assertSame('https://api.example.test/v1/sites/cb/cookies/sid', $this->calls[0]['url']);
     }
 
+    public function testOrgController(): void
+    {
+        $c = $this->client();
+        $c->org->controller();
+        $c->org->setController(['legalName' => 'Crossly Ltd', 'contactEmail' => 'p@crossly.example']);
+        $c->org->removeController();
+        $this->assertSame(
+            [
+                ['GET', 'https://api.example.test/v1/org/controller'],
+                ['PUT', 'https://api.example.test/v1/org/controller'],
+                ['DELETE', 'https://api.example.test/v1/org/controller'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
+        $this->assertSame(['legalName' => 'Crossly Ltd', 'contactEmail' => 'p@crossly.example'], $this->calls[1]['body']);
+    }
+
     public function testOrgMailProvider(): void
     {
         $c = $this->client();
@@ -72,6 +89,37 @@ final class PlatformTest extends TestCase
         $this->assertSame(['provider' => 'resend', 'fromEmail' => 'p@acme.com', 'secret' => 're_x'], $this->calls[1]['body']);
         $this->assertSame(['to' => 'me@acme.com'], $this->calls[2]['body']);
         $this->assertSame([], $this->calls[3]['body']);
+    }
+
+    public function testPreferenceCenterMintToken(): void
+    {
+        $c = $this->client(201, '{"token":"t","expiresAt":"2026-01-01T00:00:00.000Z"}');
+        $out = $c->preferenceCenter->mintToken('cb1', email: 'a@x.com');
+        $c->preferenceCenter->mintToken('cb1', subjectId: 'u1', ttlSeconds: 60);
+        $this->assertSame('t', $out['token']);
+        $this->assertSame(
+            [
+                ['POST', 'https://api.example.test/v1/preference-center/tokens', ['cbid' => 'cb1', 'email' => 'a@x.com']],
+                ['POST', 'https://api.example.test/v1/preference-center/tokens', ['cbid' => 'cb1', 'subjectId' => 'u1', 'ttlSeconds' => 60]],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url'], $x['body']], $this->calls),
+        );
+    }
+
+    public function testConsentSyncSecret(): void
+    {
+        $c = $this->client();
+        $c->consentSyncSecret->get('s 1');
+        $c->consentSyncSecret->rotate('s1');
+        $c->consentSyncSecret->remove('s1');
+        $this->assertSame(
+            [
+                ['GET', 'https://api.example.test/v1/sites/s%201/consent-sync-secret'],
+                ['POST', 'https://api.example.test/v1/sites/s1/consent-sync-secret'],
+                ['DELETE', 'https://api.example.test/v1/sites/s1/consent-sync-secret'],
+            ],
+            array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
+        );
     }
 
     public function testRightsCaptcha(): void

@@ -38,6 +38,36 @@ final class Org
     }
 
     /**
+     * Your organisation's own data-controller identity — GET /v1/org/controller. Every rights
+     * notice names it, before any site config `controller` block. `set: false` when there is none.
+     *
+     * @return array<string, mixed>
+     */
+    public function controller(): array
+    {
+        return $this->client->requestJson('GET', '/v1/org/controller');
+    }
+
+    /**
+     * Set the organisation's data-controller identity — PUT /v1/org/controller. Replaces it: a
+     * field left out is removed. Needs an unscoped key or `rights:write`.
+     *
+     * @param array{legalName: string, contactEmail?: string, address?: string, dpoContact?: string} $input
+     *
+     * @return array<string, mixed>
+     */
+    public function setController(array $input): array
+    {
+        return $this->client->requestJson('PUT', '/v1/org/controller', $input);
+    }
+
+    /** Remove the identity — DELETE /v1/org/controller. Notices then name the site config `controller` block. */
+    public function removeController(): void
+    {
+        $this->client->request('DELETE', '/v1/org/controller');
+    }
+
+    /**
      * Your own mail provider for rights-request mail — GET /v1/org/mail-provider. Never returns
      * the credential, only `secretLast4`; `sender` says whether verification codes go through it now
      * (`own`) or are not mailed at all (`none`) — there is no shared sender.
