@@ -11,6 +11,7 @@ use CookieMunch\Resources\BrandKits;
 use CookieMunch\Resources\Consent;
 use CookieMunch\Resources\Dsar;
 use CookieMunch\Resources\Keys;
+use CookieMunch\Resources\Sandbox;
 use CookieMunch\Resources\Members;
 use CookieMunch\Resources\Org;
 use CookieMunch\Resources\Preferences;
@@ -75,6 +76,7 @@ final class Client
     public readonly Preferences $preferences;
     public readonly Members $members;
     public readonly Keys $keys;
+    public readonly Sandbox $sandbox;
     public readonly Webhooks $webhooks;
     public readonly Banners $banners;
     public readonly Identity $identity;
@@ -131,6 +133,7 @@ final class Client
         $this->preferences = new Preferences($this);
         $this->members = new Members($this);
         $this->keys = new Keys($this);
+        $this->sandbox = new Sandbox($this);
         $this->webhooks = new Webhooks($this);
         $this->banners = new Banners($this);
         $this->identity = new Identity($this);
@@ -278,6 +281,17 @@ final class Client
     public function entitlements(): array
     {
         return $this->requestJson('GET', '/v1/entitlements');
+    }
+
+    /**
+     * GET /v1/versions: the dated API versions, what each changed, and the one this key is pinned to
+     * (`yours`). Re-pin with keys->updateSelf().
+     *
+     * @return array<string, mixed>
+     */
+    public function versions(): array
+    {
+        return $this->requestJson('GET', '/v1/versions');
     }
 
     /**

@@ -109,6 +109,16 @@ final class Keys
     }
 
     /**
+     * PATCH /v1/keys/self: re-pin the calling key to another dated API version (any key, for itself).
+     *
+     * @return array<string, mixed>
+     */
+    public function updateSelf(string $apiVersion): array
+    {
+        return $this->client->requestJson('PATCH', '/v1/keys/self', ['apiVersion' => $apiVersion]);
+    }
+
+    /**
      * The calling key rotates itself — POST /v1/keys/self/roll. The old secret stops at once; pass an
      * Idempotency-Key header (the Client's extra headers) so a lost answer replays.
      *
@@ -130,6 +140,27 @@ final class Keys
     public function vend(array $scopes, int $ttlSeconds, array $opts = []): array
     {
         return $this->client->requestJson('POST', '/v1/keys/vend', ['scopes' => $scopes, 'ttlSeconds' => $ttlSeconds] + $opts);
+    }
+
+    /**
+     * POST /v1/oauth/token (RFC 8693): swap your identity provider's token for a short-lived, scoped key.
+     * Needs no API key: the route never reads one, so a client made with any placeholder key works.
+     *
+     * @param list<string> $scope
+     * @param string $resource 'org:<id>' or 'site:<cbid>'
+     * @return array<string, mixed>
+     */
+    public function exchangeOperatorToken(string $subjectToken, array $scope, string $resource, string $subjectTokenType = 'access_token', ?int $expiresIn = null): array
+    {
+        $body = [
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:token-exchange', 'subject_token' => $subjectToken,
+            'subject_token_type' => 'urn:ietf:params:oauth:token-type:' . $subjectTokenType, 'scope' => implode(' ', $scope),
+            'resource' => $resource, 'audience' => 'cookiemunch',
+        ];
+        if ($expiresIn !== null) {
+            $body['expires_in'] = $expiresIn;
+        }
+        return $this->client->requestJson('POST', '/v1/oauth/token', $body);
     }
 
     /**
