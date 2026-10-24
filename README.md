@@ -80,14 +80,14 @@ try {
 
 | Group | Methods |
 |---|---|
-| `$cm->me()` / `$cm->usage()` / `$cm->audit()` | identity; org usage; audit log (newest first) |
+| `$cm->me()` / `$cm->usage()` / `$cm->entitlements()` / `$cm->audit()` | identity; org usage; plan features and limits; audit log (newest first) |
 | `$cm->org` | `get`, `update` — `update(['logoUrl' => null])` removes the logo; omit the key to leave it unchanged; your own provider for rights-request mail: `mailProvider`, `setMailProvider`, `testMailProvider`, `removeMailProvider` (no code mail until a test succeeds; there is no shared sender); the default captcha and sign-in provider for rights pages: `rightsCaptcha`, `setRightsCaptcha`, `removeRightsCaptcha`, `rightsIdentity`, `setRightsIdentity`, `removeRightsIdentity` |
 | `$cm->rightsCaptcha` | `get`, `set`, `remove` — a site's own rights-page captcha (your keys, or off) |
 | `$cm->rightsIdentity` | `get`, `set`, `remove` — a site's sign-in provider (`clerk`, `atlas` or `oidc_jwt`): a signed-in visitor is verified by their session, with no code mail; a site without its own uses the org default |
 | `$cm->assets` | `upload` — base64 image, returns `{ url }` |
 | `$cm->integrationHealth()`, `$cm->provision()` | every integration link with a fix hint; one-call wiring (idempotent, `$dryRun`, no secret returned) |
 | `$cm->keys->report()` | key hygiene: unused, broad, expiring soon; `issue(['expiresAt' => …])`, `update($p, ['expiresAt' => null])`; pass `strictUnknownFields: true` to the constructor to refuse mistyped fields |
-| `$cm->sites` | `list`, `create`, `get`, `update` (rename/move; cbid and ledger stay), `listPartners`, `linkPartner`, `unlinkPartner` (partner links, no secret), `delete`, `getConfig`, `putConfig`, `patchConfig`, `lintConfig` (consent-button parity, nothing saved), `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
+| `$cm->sites` | `list`, `create`, `get`, `update` (rename/move; cbid and ledger stay), `listPartners`, `linkPartner`, `unlinkPartner` (partner links, no secret), `delete`, `getConfig`, `putConfig`, `patchConfig`, `lintConfig` (consent-button parity, nothing saved), `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getBrand`/`setBrand` (brand.json import + read-back), `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
 | `$cm->consent` | `ingest`, `stats`, `log`, `export`, `receipt`, `eraseSubject`, `exportSubject` |
 | `$cm->dsar` | `list`, `create`, `advance`, `response` (plain-text notice), `erase`, `export` |
 | `$cm->vendors` | `list`, `create` |

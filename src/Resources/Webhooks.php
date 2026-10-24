@@ -18,10 +18,10 @@ final class Webhooks
      *
      * @return list<array<string, mixed>>
      */
-    public function list(): array
+    public function list(array $metadata = []): array
     {
         /** @var list<array<string, mixed>> $out */
-        $out = $this->client->request('GET', '/v1/webhooks') ?? [];
+        $out = $this->client->request('GET', '/v1/webhooks' . Client::metadataQuery($metadata)) ?? [];
 
         return $out;
     }
@@ -100,5 +100,11 @@ final class Webhooks
     public function replayDeadLetter(string $id): array
     {
         return $this->client->requestJson('POST', '/v1/webhooks/dead-letters/' . rawurlencode($id) . '/replay');
+    }
+
+    /** Send what a failing or disabled endpoint missed since $since (epoch ms or ISO), oldest first. */
+    public function replay(string $id, string $since, ?int $limit = null): array
+    {
+        return $this->client->requestJson('POST', '/v1/webhooks/' . rawurlencode($id) . '/replay', null, ['since' => $since, 'limit' => $limit]);
     }
 }

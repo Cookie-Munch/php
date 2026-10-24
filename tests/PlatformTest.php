@@ -264,12 +264,14 @@ final class PlatformTest extends TestCase
         $c->fulfillment->connectExecutorPreset('forumulate', 'fck_12345678', ['orgId' => 'org-1']);
         $c->fulfillment->testExecutor('ex 1', canary: true);
         $c->fulfillment->upgradeExecutorPreset('ex 1', ['atlasIdAppId' => 'app_1'], true);
+        $c->fulfillment->executor('ex 1');
         $this->assertSame(
             [
                 ['GET', 'https://api.example.test/v1/dsar/executors/presets'],
                 ['POST', 'https://api.example.test/v1/dsar/executors'],
                 ['POST', 'https://api.example.test/v1/dsar/executors/ex%201/test'],
                 ['POST', 'https://api.example.test/v1/dsar/executors/ex%201/upgrade-preset?dryRun=1'],
+                ['GET', 'https://api.example.test/v1/dsar/executors/ex%201'],
             ],
             array_map(fn ($x) => [$x['method'], $x['url']], $this->calls),
         );

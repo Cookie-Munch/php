@@ -41,9 +41,18 @@ public function status(string $requestId): array
 }
 
 /** @return list<array<string, mixed>> Systems connected to run part of a request themselves. */
-public function executors(): array
+public function executors(array $metadata = []): array
 {
-    return $this->client->requestJson('GET', '/v1/dsar/executors');
+    return $this->client->requestJson('GET', '/v1/dsar/executors' . Client::metadataQuery($metadata));
+}
+
+/**
+ * @return array<string, mixed> One connection with its full profile, never its credentials. Read it before
+ * changing the profile: updateExecutor replaces the whole profile.
+ */
+public function executor(string $id): array
+{
+    return $this->client->requestJson('GET', '/v1/dsar/executors/' . rawurlencode($id));
 }
 
 /**
@@ -117,7 +126,11 @@ public function executorPresets(): array
  * and credential; `preset` adopts one on a hand-written connection — POST
  * /v1/dsar/executors/{id}/upgrade-preset. Answers with a diff; `$dryRun` changes nothing.
  *
- * @param array{preset?: string, presetVersion?: int, orgId?: string, atlasIdAppId?: string} $input
+ * Your hand edits (`profileOverrides`) are kept and listed as `kept` or `conflict`;
+ * `acceptPreset` names the paths that take the preset's value again. A pinned connection is
+ * refused (409 `preset_pinned`).
+ *
+ * @param array{preset?: string, presetVersion?: int, orgId?: string, atlasIdAppId?: string, revokeAtlasIdGrant?: bool, acceptPreset?: string|list<string>} $input
  *
  * @return array<string, mixed>
  */
@@ -135,7 +148,7 @@ public function upgradeExecutorPreset(string $id, array $input = [], bool $dryRu
  * the credential is kept unless `secretKey` is given, and `webhookSecret => null` removes it.
  * `$dryRun` (?dryRun=1) returns the would-be connection and a diff, and changes nothing.
  *
- * @param array{profile?: array<string, mixed>, baseUrl?: string, secretKey?: string, webhookSecret?: ?string, auto?: bool} $patch
+ * @param array{profile?: array<string, mixed>, baseUrl?: string, secretKey?: string, webhookSecret?: ?string, auto?: bool, orchestrator?: int} $patch
  *
  * @return array<string, mixed>
  */
@@ -171,6 +184,28 @@ public function testExecutorWebhook(string $id, array $headers, string $body): a
 public function executorWebhookDeliveries(string $id): array
 {
     return $this->client->requestJson('GET', '/v1/dsar/executors/' . rawurlencode($id) . '/webhook/deliveries');
+}
+
+/**
+ * Re-check a connection now: a canary test that records its health, for a deploy pipeline —
+ * POST /v1/dsar/executors/{id}/recheck.
+ *
+ * @return array<string, mixed>
+ */
+public function recheckExecutor(string $id): array
+{
+    return $this->client->requestJson('POST', '/v1/dsar/executors/' . rawurlencode($id) . '/recheck', (object) []);
+}
+
+/**
+ * A connection's last health checks, newest first (`$limit` 1 to 50) —
+ * GET /v1/dsar/executors/{id}/health/history.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+public function executorHealthHistory(string $id, ?int $limit = null): array
+{
+    return $this->client->requestJson('GET', '/v1/dsar/executors/' . rawurlencode($id) . '/health/history', null, ['limit' => $limit]);
 }
 
 /**
@@ -238,5 +273,27 @@ public function reportTask(string $taskId, bool $ok, ?string $error = null): arr
     }
 
     return $this->client->requestJson('POST', '/v1/dsar/agent/tasks/' . rawurlencode($taskId) . '/result', $body);
+}
+
+/**
+ * Run the cm-standard-v2 conformance kit against a connection, on the canary subject only —
+ * POST /v1/dsar/executors/{id}/test {"conformance": true}.
+ *
+ * @return array<string, mixed>
+ */
+public function executorConformance(string $id): array
+{
+    return $this->client->requestJson('POST', '/v1/dsar/executors/' . rawurlencode($id) . '/test', ['conformance' => true]);
+}
+
+/**
+ * A new completion secret, shown once; the old one keeps verifying for 24 hours —
+ * POST /v1/dsar/executors/{id}/completion-secret/roll.
+ *
+ * @return array<string, mixed>
+ */
+public function rollExecutorCompletionSecret(string $id): array
+{
+    return $this->client->requestJson('POST', '/v1/dsar/executors/' . rawurlencode($id) . '/completion-secret/roll');
 }
 }

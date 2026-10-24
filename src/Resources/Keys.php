@@ -87,4 +87,59 @@ final class Keys
         $q = array_filter(['unusedDays' => $unusedDays, 'expiringDays' => $expiringDays], static fn ($v) => $v !== null);
         return $this->client->requestJson('GET', '/v1/keys/report' . ($q ? '?' . http_build_query($q) : ''));
     }
+
+    /**
+     * The suite-standard listing — GET /v1/keys?shape=standard.
+     *
+     * @return array<string, mixed>
+     */
+    public function listStandard(): array
+    {
+        return $this->client->requestJson('GET', '/v1/keys?shape=standard');
+    }
+
+    /**
+     * The calling key itself (any key): scopes, properties, expiry, owner — GET /v1/keys/self.
+     *
+     * @return array<string, mixed>
+     */
+    public function self(): array
+    {
+        return $this->client->requestJson('GET', '/v1/keys/self');
+    }
+
+    /**
+     * The calling key rotates itself — POST /v1/keys/self/roll. The old secret stops at once; pass an
+     * Idempotency-Key header (the Client's extra headers) so a lost answer replays.
+     *
+     * @return array<string, mixed>
+     */
+    public function rollSelf(): array
+    {
+        return $this->client->requestJson('POST', '/v1/keys/self/roll');
+    }
+
+    /**
+     * A short-lived key (at most 12 hours) within this key's own scopes and properties —
+     * POST /v1/keys/vend. Needs keys:write or a full-access key.
+     *
+     * @param list<string> $scopes
+     * @param array{cbids?: list<string>, name?: string} $opts
+     * @return array<string, mixed>
+     */
+    public function vend(array $scopes, int $ttlSeconds, array $opts = []): array
+    {
+        return $this->client->requestJson('POST', '/v1/keys/vend', ['scopes' => $scopes, 'ttlSeconds' => $ttlSeconds] + $opts);
+    }
+
+    /**
+     * Revoke a published secret — POST /v1/keys/revoke_leaked. Needs no valid key; always answers
+     * { received }.
+     *
+     * @return array<string, mixed>
+     */
+    public function revokeLeaked(string $key, ?string $source = null): array
+    {
+        return $this->client->requestJson('POST', '/v1/keys/revoke_leaked', ['key' => $key] + ($source !== null ? ['source' => $source] : []));
+    }
 }

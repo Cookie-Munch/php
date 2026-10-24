@@ -21,10 +21,10 @@ final class Sites
      *
      * @return list<array<string, mixed>>
      */
-    public function list(): array
+    public function list(array $metadata = []): array
     {
         /** @var list<array<string, mixed>> $out */
-        $out = $this->client->request('GET', '/v1/sites') ?? [];
+        $out = $this->client->request('GET', '/v1/sites' . Client::metadataQuery($metadata)) ?? [];
 
         return $out;
     }
@@ -68,6 +68,17 @@ final class Sites
     public function delete(string $cbid): void
     {
         $this->client->request('DELETE', '/v1/sites/' . self::enc($cbid));
+    }
+
+    /**
+     * Purge a SANDBOX site — DELETE /v1/sites/{cbid}?hard=1: its consent ledger, declarations and
+     * test rights requests too. Anything not created as a sandbox is 403 not_a_sandbox.
+     *
+     * @return array<string, mixed>
+     */
+    public function deleteSandbox(string $cbid): array
+    {
+        return $this->client->requestJson('DELETE', '/v1/sites/' . self::enc($cbid) . '?hard=1');
     }
 
     /**
@@ -201,7 +212,7 @@ final class Sites
     }
 
     /**
-     * The last scan — GET /v1/sites/{cbid}/scan: `state` (queued, scanning, done, failed),
+     * The last scan — GET /v1/sites/{cbid}/scan: `state` (idle, queued, scanning, done, failed),
      * `scanId`, timings, `cookieCount`, `pagesVisited`, `error`. $wait (seconds, at most 60)
      * holds the request until a running scan settles.
      *
@@ -301,6 +312,30 @@ final class Sites
     public function brand(string $cbid): array
     {
         return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/brand', []);
+    }
+
+    /**
+     * The brand.json last imported for the site — GET /v1/sites/{cbid}/brand: each role, the theme
+     * token it sets, its source (brand.json or site), ignored and warnings.
+     *
+     * @return array<string, mixed>
+     */
+    public function getBrand(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/brand');
+    }
+
+    /**
+     * Import a DTCG brand.json into the banner theme and the rights page — PUT /v1/sites/{cbid}/brand.
+     * $input is ['url' => 'https://…'] or the document. Values the site set itself are kept
+     * (brand.json < site banner theme < per-banner variant). $dryRun saves nothing.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    public function setBrand(string $cbid, array $input, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('PUT', '/v1/sites/' . self::enc($cbid) . '/brand' . ($dryRun ? '?dryRun=1' : ''), $input);
     }
 
     /**
@@ -473,7 +508,7 @@ final class Sites
     }
 
     /**
-     * Every declaration preset (atlas, forumulate, chatly, cookiemunch, referally): its parameters, what
+     * Every declaration preset (atlas, forumulate, chatly, cookiemunch, referalli, firstpromoter, partnerstack, tapfiliate, impact): its parameters, what
      * it has declared on this site, and whether the vendor's manifest exists yet —
      * GET /v1/sites/{cbid}/cookies/presets.
      *
@@ -488,7 +523,7 @@ final class Sites
      * Apply (or re-sync) a vendor preset: declares what that platform writes, marked
      * `vendor` — PUT /v1/sites/{cbid}/cookies/presets/{vendor}. Atlas takes
      * `frontendApiHost`/`crossSubdomainCookies`; Chatly `publicId`/`dragging`/`category`;
-     * Referally `cookieDomain`/`cookieDays`/`category`.
+     * referral presets `cookieDomain`/`cookieDays`/`category` (referalli `legacyName`, impact `campaignId`).
      *
      * @param array<string, mixed> $params
      * @return array<string, mixed> { vendor, cookies, removed, skipped?, note?, manifest }
@@ -497,6 +532,56 @@ final class Sites
     {
         $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/presets/' . rawurlencode($vendor) . ($dryRun ? '?dryRun=1' : '');
         return $this->client->requestJson('PUT', $path, (object) $params);
+    }
+
+    /**
+     * Declare any vendor's cookies and storage from its embed manifest — PUT
+     * /v1/sites/{cbid}/cookies/presets/custom with `url` (an https /.well-known/forgedeck-embed.json,
+     * re-read hourly) or `manifest` (the document). The vendor id is the manifest's `product`.
+     *
+     * @param array<string, mixed>|null $manifest
+     * @param array<string, string>|null $params
+     * @return array<string, mixed>
+     */
+    public function importCookieManifest(string $cbid, ?string $url = null, ?array $manifest = null, ?array $params = null, bool $dryRun = false): array
+    {
+        $body = $url !== null ? ['url' => $url] : ['manifest' => (object) ($manifest ?? [])];
+        if ($params !== null) {
+            $body['params'] = (object) $params;
+        }
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/presets/custom' . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('PUT', $path, (object) $body);
+    }
+
+    /**
+     * What to declare — GET /v1/sites/{cbid}/cookies/suggestions: detected vendors and one
+     * suggestion per undeclared cookie or key.
+     *
+     * @return array<string, mixed> { suggestions, vendors }
+     */
+    public function cookieSuggestions(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . rawurlencode($cbid) . '/cookies/suggestions');
+    }
+
+    /**
+     * Declare the suggestions — POST /v1/sites/{cbid}/cookies/suggestions/declare: detected vendors'
+     * presets, then every other one with a purpose. Run with $dryRun first.
+     *
+     * @param list<string>|null $names
+     * @return array<string, mixed> { presetsApplied, declaredCount, skipped? }
+     */
+    public function declareCookieSuggestions(string $cbid, ?array $names = null, ?bool $presets = null, bool $dryRun = false): array
+    {
+        $body = [];
+        if ($names !== null) {
+            $body['names'] = array_values($names);
+        }
+        if ($presets !== null) {
+            $body['presets'] = $presets;
+        }
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/suggestions/declare' . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('POST', $path, (object) $body);
     }
 
     /**

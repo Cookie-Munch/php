@@ -59,6 +59,16 @@ final class Consent
     }
 
     /**
+     * Opt-in by region and A/B variant, and the decision rate. Language and time-to-decision are not recorded (null).
+     *
+     * @param array{from?: int, to?: int} $query
+     */
+    public function insights(string $cbid, array $query = []): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/consent/insights', null, $this->range($query));
+    }
+
+    /**
      * Recent anonymised consent records — GET /v1/sites/{cbid}/consent/log.
      *
      * @param array{from?: int, to?: int, limit?: int} $query
@@ -121,6 +131,18 @@ final class Consent
     public function exportSubject(string $cbid, string $stamp): array
     {
         return $this->client->requestJson('GET', '/v1/sites/' . self::enc($cbid) . '/subject-export', null, ['stamp' => $stamp]);
+    }
+
+    /**
+     * The reserved categories (support_chat, referrals) a site switches on with categories.suite:
+     * stance, fallback, basis, wording in every banner language, known vendors. Public —
+     * GET /v1/categories/registry.
+     *
+     * @return array<string, mixed>
+     */
+    public function categoryRegistry(): array
+    {
+        return $this->client->requestJson('GET', '/v1/categories/registry');
     }
 
     /**

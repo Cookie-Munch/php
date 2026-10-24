@@ -118,4 +118,68 @@ final class Dsar
     {
         return $this->client->requestJson('POST', '/v1/dsar/' . rawurlencode($id) . '/export', ['cbid' => $cbid, 'stamp' => $stamp]);
     }
+
+    /**
+     * The request carrying one X-ForgeDeck-Trace — GET /v1/dsar?trace=.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listByTrace(string $trace): array
+    {
+        return $this->client->requestJson('GET', '/v1/dsar', null, ['trace' => $trace]);
+    }
+
+    /**
+     * Open a case fanned out to every connected system — POST /v1/dsar/requests. `type` takes the
+     * canonical words (access, deletion, closure, restriction, rectification) or an alias (erasure,
+     * erase, export). `subject` is ['emails' => [...], 'identity' => ['iss' =>, 'sub' =>, 'ext' =>, 'principal' =>]]
+     * from any issuer the site trusts. `source` product/atlas attests the person (dsar:write); admin
+     * files it received. `$idempotencyKey` (16–128 chars) makes a retry answer the same case.
+     *
+     * @param array{cbid: string, type: string, subject?: array<string, mixed>, subjectToken?: string, source?: string, reason?: string, skipSystems?: list<string>, fulfill?: bool, test?: bool} $input
+     *
+     * @return array<string, mixed>
+     */
+    public function openCase(array $input, ?string $idempotencyKey = null, ?string $trace = null): array
+    {
+        $headers = [];
+        if ($idempotencyKey !== null) {
+            $headers['Idempotency-Key'] = $idempotencyKey;
+        }
+        if ($trace !== null) {
+            $headers['X-ForgeDeck-Trace'] = $trace;
+        }
+
+        return $this->client->requestJson('POST', '/v1/dsar/requests', $input, null, $headers);
+    }
+
+    /**
+     * One case across every system — GET /v1/dsar/requests/{id}.
+     *
+     * @return array<string, mixed>
+     */
+    public function getCase(string $id): array
+    {
+        return $this->client->requestJson('GET', '/v1/dsar/requests/' . rawurlencode($id));
+    }
+
+    /**
+     * Cancel a case before executeAfter — POST /v1/dsar/requests/{id}/cancel. Every system keeps its data.
+     *
+     * @return array<string, mixed>
+     */
+    public function cancelCase(string $id): array
+    {
+        return $this->client->requestJson('POST', '/v1/dsar/requests/' . rawurlencode($id) . '/cancel');
+    }
+
+    /**
+     * The signed (Ed25519) receipt for a case — GET /v1/dsar/requests/{id}/receipt.
+     *
+     * @return array<string, mixed>
+     */
+    public function caseReceipt(string $id): array
+    {
+        return $this->client->requestJson('GET', '/v1/dsar/requests/' . rawurlencode($id) . '/receipt');
+    }
 }

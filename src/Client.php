@@ -34,7 +34,11 @@ use CookieMunch\Resources\RightsLinks;
 use CookieMunch\Resources\RightsCaptcha;
 use CookieMunch\Resources\ConsentSyncSecret;
 use CookieMunch\Resources\PreferenceCenter;
+use CookieMunch\Resources\Metadata;
+use CookieMunch\Resources\PartnerLinks;
 use CookieMunch\Resources\RightsIdentity;
+use CookieMunch\Resources\DsarSettings;
+use CookieMunch\Resources\Integrations;
 use CookieMunch\Resources\Assets;
 
 /**
@@ -89,8 +93,12 @@ final class Client
     public readonly ConsentSyncSecret $consentSyncSecret;
     public readonly PreferenceCenter $preferenceCenter;
     public readonly RightsIdentity $rightsIdentity;
+    public readonly DsarSettings $dsarSettings;
+    public readonly Integrations $integrations;
     public readonly Org $org;
     public readonly Assets $assets;
+    public readonly Metadata $metadata;
+    public readonly PartnerLinks $partnerLinks;
 
     /**
      * @param string         $apiKey    An "fck_..." developer API key.
@@ -104,6 +112,10 @@ final class Client
         ?Transport $transport = null,
         /** Send `Prefer: strict-unknown-fields` on writes: an undeclared body field is refused (400 unknown_field). */
         private readonly bool $strictUnknownFields = false,
+        /** `x25519:<base64 public key>`: once-shown secrets come back sealed (`sealed_secret`). */
+        private readonly ?string $secretRecipient = null,
+        /** @var array<string, string> Extra headers on every request, e.g. ['Idempotency-Key' => '<ref>:<run>']. */
+        private readonly array $extraHeaders = [],
     ) {
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->transport = $transport ?? new CurlTransport();
@@ -137,8 +149,30 @@ final class Client
         $this->consentSyncSecret = new ConsentSyncSecret($this);
         $this->preferenceCenter = new PreferenceCenter($this);
         $this->rightsIdentity = new RightsIdentity($this);
+        $this->dsarSettings = new DsarSettings($this);
+        $this->integrations = new Integrations($this);
         $this->org = new Org($this);
         $this->assets = new Assets($this);
+        $this->metadata = new Metadata($this);
+        $this->partnerLinks = new PartnerLinks($this);
+    }
+
+    /**
+     * `?metadata[k]=v` tag filters for list endpoints.
+     *
+     * @param array<string, string> $metadata
+     */
+    public static function metadataQuery(array $metadata): string
+    {
+        if ($metadata === []) {
+            return '';
+        }
+        $parts = [];
+        foreach ($metadata as $k => $v) {
+            $parts[] = 'metadata%5B' . rawurlencode((string) $k) . '%5D=' . rawurlencode((string) $v);
+        }
+
+        return '?' . implode('&', $parts);
     }
 
     /** Override the User-Agent header sent on every request. */
@@ -167,9 +201,10 @@ final class Client
      *
      * @return array<string, mixed> { orgs, orgLimit: { max, plan, used }, upgradeUrl }
      */
-    public function listOrgs(): array
+    /** @param array<string, string> $metadata keep only organisations with these tags */
+    public function listOrgs(array $metadata = []): array
     {
-        return $this->requestJson('GET', '/v1/orgs');
+        return $this->requestJson('GET', '/v1/orgs' . self::metadataQuery($metadata));
     }
 
     /**
@@ -181,9 +216,34 @@ final class Client
      *
      * @return array<string, mixed>
      */
-    public function createOrg(string $name): array
+    /**
+     * @param array{mintKey?: bool, keyScopes?: list<string>, keyExpiresInDays?: int, keyOwner?: string, externalRef?: string, metadata?: array<string, mixed>} $opts
+     */
+    public function createOrg(string $name, array $opts = []): array
     {
-        return $this->requestJson('POST', '/v1/orgs', ['name' => $name]);
+        return $this->requestJson('POST', '/v1/orgs', ['name' => $name] + $opts);
+    }
+
+    /**
+     * Remove a SANDBOX organisation of this account — DELETE /v1/orgs/{id}?hard=1. Only one created
+     * with metadata.forgedeck_sandbox; anything else is 403 not_a_sandbox.
+     *
+     * @return array<string, mixed>
+     */
+    public function deleteSandboxOrg(string $id): array
+    {
+        return $this->requestJson('DELETE', '/v1/orgs/' . rawurlencode($id) . '?hard=1');
+    }
+
+    /**
+     * What `forgedeck env` writes for the product provisioned with this ref — GET /v1/provision/env:
+     * names, non-secret values, and references for secrets.
+     *
+     * @return array<string, mixed>
+     */
+    public function provisionEnv(string $ref): array
+    {
+        return $this->requestJson('GET', '/v1/provision/env?ref=' . rawurlencode($ref));
     }
 
     /**
@@ -209,6 +269,18 @@ final class Client
     }
 
     /**
+     * What the org may use, from its plan — GET /v1/entitlements: every feature as
+     * { key, enabled } and every limit as limits.<name> with limit (null = unlimited) and used
+     * where metered. Any key may read it.
+     *
+     * @return array<string, mixed> { orgId, plan, planSource, subscribedPlan, entitlements, generatedAt }
+     */
+    public function entitlements(): array
+    {
+        return $this->requestJson('GET', '/v1/entitlements');
+    }
+
+    /**
      * Every link a site's privacy wiring depends on, one row each with `ok` (null = could not
      * check) and a `fixHint` — GET /v1/integration-health. $cbid may be omitted with one site.
      *
@@ -220,15 +292,28 @@ final class Client
     }
 
     /**
+     * The site's embed manifest — GET /v1/embed?cbid=, the tenant variant of
+     * /.well-known/forgedeck-embed.json: every origin by CSP directive and every browser key the
+     * embed writes for this site's config. Public: no key is needed.
+     *
+     * @return array<string, mixed> { schema, product, updated, checkers, surfaces, changes, tenant }
+     */
+    public function embedManifest(string $cbid): array
+    {
+        return $this->requestJson('GET', '/v1/embed?cbid=' . rawurlencode($cbid));
+    }
+
+    /**
      * Wire a product's privacy in one call — POST /v1/provision. Idempotent; $dryRun writes
      * nothing anywhere. Secrets in $input are used for this request only; none is returned.
      *
      * @param array<string, mixed> $input
      * @return array<string, mixed> { dryRun, product, cbid, steps, summary }
      */
-    public function provision(array $input, bool $dryRun = false): array
+    public function provision(array $input, bool $dryRun = false, ?string $fromStep = null): array
     {
-        return $this->requestJson('POST', '/v1/provision' . ($dryRun ? '?dryRun=1' : ''), $input);
+        $q = array_filter(['dryRun' => $dryRun ? '1' : null, 'fromStep' => $fromStep], static fn ($v) => $v !== null);
+        return $this->requestJson('POST', '/v1/provision' . ($q ? '?' . http_build_query($q) : ''), $input);
     }
 
     /**
@@ -239,9 +324,53 @@ final class Client
      *
      * @return array<string, mixed>
      */
-    public function audit(?int $limit = null): array
+    public function audit(?int $limit = null, ?string $actor = null): array
     {
-        return $this->requestJson('GET', '/v1/audit', null, ['limit' => $limit]);
+        return $this->requestJson('GET', '/v1/audit', null, ['limit' => $limit, 'actor' => $actor]);
+    }
+
+    /** GET /v1/audit/sink — where the audit log is streamed as CloudEvents (never the secret). */
+    public function getAuditSink(): array
+    {
+        return $this->requestJson('GET', '/v1/audit/sink');
+    }
+
+    /**
+     * PUT /v1/audit/sink {type: "webhook", url, secret?}. A generated secret is returned once.
+     *
+     * @param array<string, mixed> $input
+     */
+    public function setAuditSink(array $input): array
+    {
+        return $this->requestJson('PUT', '/v1/audit/sink', $input);
+    }
+
+    /** DELETE /v1/audit/sink — stop the audit-log export. */
+    public function removeAuditSink(): void
+    {
+        $this->request('DELETE', '/v1/audit/sink');
+    }
+
+    /** GET /v1/integration-health/waivers — checks the org chose not to meet. */
+    public function healthWaivers(?string $cbid = null): array
+    {
+        return $this->requestJson('GET', '/v1/integration-health/waivers', null, ['cbid' => $cbid]);
+    }
+
+    /**
+     * PUT /v1/integration-health/waivers {cbid?, check, subject?, reason, until?}. Audited.
+     *
+     * @param array<string, mixed> $input
+     */
+    public function setHealthWaiver(array $input): array
+    {
+        return $this->requestJson('PUT', '/v1/integration-health/waivers', $input);
+    }
+
+    /** DELETE /v1/integration-health/waivers — the check reports its real state again. */
+    public function removeHealthWaiver(string $check, ?string $cbid = null, ?string $subject = null): void
+    {
+        $this->request('DELETE', '/v1/integration-health/waivers', null, ['check' => $check, 'cbid' => $cbid, 'subject' => $subject]);
     }
 
     /**
@@ -283,12 +412,13 @@ final class Client
      *
      * @param array<string, mixed>|\stdClass|null             $body  A \stdClass is sent as a JSON object even when empty.
      * @param array<string, int|string|bool|null>|null        $query
+     * @param array<string, string>                           $extraHeaders e.g. Idempotency-Key.
      *
      * @return array<string, mixed>
      */
-    public function requestJson(string $method, string $path, array|\stdClass|null $body = null, ?array $query = null): array
+    public function requestJson(string $method, string $path, array|\stdClass|null $body = null, ?array $query = null, array $extraHeaders = []): array
     {
-        $result = $this->request($method, $path, $body, $query);
+        $result = $this->request($method, $path, $body, $query, false, $extraHeaders);
 
         return is_array($result) ? $result : [];
     }
@@ -299,13 +429,14 @@ final class Client
      * @param array<string, mixed>|\stdClass|null      $body  JSON request body, or null for none (a \stdClass is always an object).
      * @param array<string, int|string|bool|null>|null $query Query parameters (null values dropped).
      * @param bool                                     $raw   When true, return the raw response body as a string.
+     * @param array<string, string>                    $extraHeaders Extra request headers, e.g. Idempotency-Key.
      *
      * @return array<mixed>|string|null Decoded JSON (array), the raw string when $raw, or null for 204/empty.
      *
      * @throws ApiException     On any non-2xx response.
      * @throws TransportException On a transport-level failure.
      */
-    public function request(string $method, string $path, array|\stdClass|null $body = null, ?array $query = null, bool $raw = false): array|string|null
+    public function request(string $method, string $path, array|\stdClass|null $body = null, ?array $query = null, bool $raw = false, array $extraHeaders = []): array|string|null
     {
         $url = $this->baseUrl . $path . $this->buildQuery($query);
 
@@ -314,9 +445,15 @@ final class Client
             'X-API-Key' => $this->apiKey,
             'Accept' => 'application/json',
             'User-Agent' => $this->userAgent,
-        ];
+        ] + $extraHeaders;
         if ($this->strictUnknownFields && strtoupper($method) !== 'GET') {
             $headers['Prefer'] = 'strict-unknown-fields';
+        }
+        if ($this->secretRecipient !== null && strtoupper($method) !== 'GET') {
+            $headers['X-Secret-Recipient'] = $this->secretRecipient;
+        }
+        foreach ($this->extraHeaders as $k => $v) {
+            $headers[$k] = $v;
         }
 
         $encodedBody = null;
