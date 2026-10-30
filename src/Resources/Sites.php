@@ -522,7 +522,7 @@ final class Sites
     /**
      * Apply (or re-sync) a vendor preset: declares what that platform writes, marked
      * `vendor` — PUT /v1/sites/{cbid}/cookies/presets/{vendor}. Atlas takes
-     * `frontendApiHost`/`crossSubdomainCookies`; Chatly `publicId`/`dragging`/`category`;
+     * `frontendApiHost`/`crossSubdomainCookies`/`publishableKey`; Chatly `publicId`/`dragging`/`storage`/`tracking`/`category`;
      * referral presets `cookieDomain`/`cookieDays`/`category` (referalli `legacyName`, impact `campaignId`).
      *
      * @param array<string, mixed> $params
