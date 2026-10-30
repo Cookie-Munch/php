@@ -28,4 +28,15 @@ public function upcoming(?int $days = null): array
 {
     return $this->client->requestJson('GET', '/v1/regulatory/upcoming', null, ['days' => $days]);
 }
+
+/**
+ * GET /v1/sites/{cbid}/regulatory/upcoming — what takes effect within $days (default 90) where at
+ * least $minShare (default 0.01) of the site's last 30 days of decisions came from. Needs sites:read.
+ *
+ * @return array<string, mixed>
+ */
+public function upcomingForSite(string $cbid, ?int $days = null, ?float $minShare = null): array
+{
+    return $this->client->requestJson('GET', '/v1/sites/' . rawurlencode($cbid) . '/regulatory/upcoming', null, ['days' => $days, 'minShare' => $minShare]);
+}
 }
