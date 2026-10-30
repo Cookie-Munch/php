@@ -99,13 +99,16 @@ public function connectExecutor(
  * or `chatly`. The response carries presetVersion and presetDiff. A preset waiting on another
  * platform's API is refused (409 preset_waiting_on_platform); see executorPresets().
  *
- * @param array{system?: string, baseUrl?: string, orgId?: string, atlasIdAppId?: string, presetVersion?: int, webhookSecret?: string, auto?: bool, cbid?: string} $options
+ * Pass a null `$secretKey` with `mintFrom` in `$options` (a partner id that registered an executorKeyUrl) to have
+ * that partner mint the key for the site under its link; `externalId` names the partner account.
+ *
+ * @param array{system?: string, baseUrl?: string, orgId?: string, atlasIdAppId?: string, presetVersion?: int, webhookSecret?: string, auto?: bool, cbid?: string, mintFrom?: string, externalId?: string} $options
  *
  * @return array<string, mixed>
  */
-public function connectExecutorPreset(string $preset, string $secretKey, array $options = [], bool $dryRun = false): array
+public function connectExecutorPreset(string $preset, ?string $secretKey, array $options = [], bool $dryRun = false): array
 {
-    $body = ['preset' => $preset, 'secretKey' => $secretKey] + $options;
+    $body = ['preset' => $preset] + ($secretKey !== null ? ['secretKey' => $secretKey] : []) + $options;
 
     return $this->client->requestJson('POST', '/v1/dsar/executors' . ($dryRun ? '?dryRun=1' : ''), $body);
 }

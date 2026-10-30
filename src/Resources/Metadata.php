@@ -20,7 +20,7 @@ final class Metadata
     }
 
     /**
-     * Merge tags (a null value removes one). forgedeck_sandbox cannot be set here.
+     * Merge tags (a null value removes one). stack_sandbox cannot be set here.
      *
      * @param array<string, string|int|float|bool|null> $metadata
      * @return array<string, mixed>

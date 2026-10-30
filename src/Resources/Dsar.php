@@ -120,7 +120,7 @@ final class Dsar
     }
 
     /**
-     * The request carrying one X-ForgeDeck-Trace — GET /v1/dsar?trace=.
+     * The request carrying one X-Trace-Id — GET /v1/dsar?trace=.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -147,7 +147,7 @@ final class Dsar
             $headers['Idempotency-Key'] = $idempotencyKey;
         }
         if ($trace !== null) {
-            $headers['X-ForgeDeck-Trace'] = $trace;
+            $headers['X-Trace-Id'] = $trace;
         }
 
         return $this->client->requestJson('POST', '/v1/dsar/requests', $input, null, $headers);

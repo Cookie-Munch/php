@@ -536,7 +536,7 @@ final class Sites
 
     /**
      * Declare any vendor's cookies and storage from its embed manifest — PUT
-     * /v1/sites/{cbid}/cookies/presets/custom with `url` (an https /.well-known/forgedeck-embed.json,
+     * /v1/sites/{cbid}/cookies/presets/custom with `url` (an https /.well-known/<product>-embed.json,
      * re-read hourly) or `manifest` (the document). The vendor id is the manifest's `product`.
      *
      * @param array<string, mixed>|null $manifest

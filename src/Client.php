@@ -229,7 +229,7 @@ final class Client
 
     /**
      * Remove a SANDBOX organisation of this account — DELETE /v1/orgs/{id}?hard=1. Only one created
-     * with metadata.forgedeck_sandbox; anything else is 403 not_a_sandbox.
+     * with metadata.stack_sandbox; anything else is 403 not_a_sandbox.
      *
      * @return array<string, mixed>
      */
@@ -239,7 +239,7 @@ final class Client
     }
 
     /**
-     * What `forgedeck env` writes for the product provisioned with this ref — GET /v1/provision/env:
+     * What `env` writes for the product provisioned with this ref — GET /v1/provision/env:
      * names, non-secret values, and references for secrets.
      *
      * @return array<string, mixed>
@@ -307,7 +307,7 @@ final class Client
 
     /**
      * The site's embed manifest — GET /v1/embed?cbid=, the tenant variant of
-     * /.well-known/forgedeck-embed.json: every origin by CSP directive and every browser key the
+     * /.well-known/cookiemunch-embed.json: every origin by CSP directive and every browser key the
      * embed writes for this site's config. Public: no key is needed.
      *
      * @return array<string, mixed> { schema, product, updated, checkers, surfaces, changes, tenant }
