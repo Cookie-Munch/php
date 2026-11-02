@@ -181,6 +181,19 @@ public function updateExecutor(string $id, array $patch, bool $dryRun = false): 
 }
 
 /**
+ * Create or update the connection for a system from the same body as a create — PUT /v1/dsar/executors.
+ * Re-running it changes nothing; a changed create-only field answers 409 immutable_field naming every
+ * such field. The answer carries upserted: created or updated.
+ *
+ * @param array<string, mixed> $body
+ * @return array<string, mixed>
+ */
+public function upsertExecutor(array $body): array
+{
+    return $this->client->requestJson('PUT', '/v1/dsar/executors', $body);
+}
+
+/**
  * Would this webhook delivery verify? — POST /v1/dsar/executors/{id}/webhook/test. Runs the
  * receiver's exact check on the headers and the raw body string (the bytes that were signed)
  * and acts on nothing. Returns `verified`, `stage` and `reason`.
