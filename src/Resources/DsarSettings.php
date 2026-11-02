@@ -35,4 +35,17 @@ final class DsarSettings
     {
         return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/dsar-settings', ['graceDays' => $graceDays]);
     }
+
+    /**
+     * PUT /v1/sites/{cbid}/dsar-settings, changing only the keys given: graceDays, processing (this site is a processor:
+     * ['role' => 'processor', 'controllers' => [...]], null clears) and acceptForwardsFrom (processors that may open cases
+     * here, null clears). A webhook secret is write-only.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    public function update(string $cbid, array $settings): array
+    {
+        return $this->client->requestJson('PUT', '/v1/sites/' . rawurlencode($cbid) . '/dsar-settings', $settings);
+    }
 }

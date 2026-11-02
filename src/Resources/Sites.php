@@ -585,6 +585,60 @@ final class Sites
     }
 
     /**
+     * The site's own translation account — GET /v1/sites/{cbid}/translation: provider, key last
+     * four and fingerprint, when connected. Never the key.
+     *
+     * @return array<string, mixed>
+     */
+    public function translation(string $cbid): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . rawurlencode($cbid) . '/translation');
+    }
+
+    /**
+     * Connect the site's own DeepL or Google Cloud Translation key — PUT /v1/sites/{cbid}/translation
+     * ($provider: 'deepl' or 'google'). Stored sealed, never returned. $verify checks it first, sending no text.
+     *
+     * @return array<string, mixed>
+     */
+    public function connectTranslation(string $cbid, string $provider, string $key, bool $verify = false): array
+    {
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/translation' . ($verify ? '?verify=1' : '');
+        return $this->client->requestJson('PUT', $path, ['provider' => $provider, 'key' => $key]);
+    }
+
+    /**
+     * Remove the site's translation key — DELETE /v1/sites/{cbid}/translation. Translations already stored stay.
+     *
+     * @return array<string, mixed>
+     */
+    public function disconnectTranslation(string $cbid): array
+    {
+        return $this->client->requestJson('DELETE', '/v1/sites/' . rawurlencode($cbid) . '/translation');
+    }
+
+    /**
+     * Machine-translate the missing purposes of the site's own cookie rows on its connected account —
+     * POST /v1/sites/{cbid}/cookies/translate. Never overwrites a row's text. $dryRun calls no provider.
+     *
+     * @param list<string>|null $languages
+     * @param list<string>|null $names
+     * @return array<string, mixed> { dryRun, provider, languages, unsupported, failed, characters, translated, rows, changes, skipped }
+     */
+    public function translateCookies(string $cbid, ?array $languages = null, ?array $names = null, bool $dryRun = false): array
+    {
+        $body = [];
+        if ($languages !== null) {
+            $body['languages'] = array_values($languages);
+        }
+        if ($names !== null) {
+            $body['names'] = array_values($names);
+        }
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/cookies/translate' . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('POST', $path, (object) $body);
+    }
+
+    /**
      * Remove every declaration a vendor preset made — DELETE /v1/sites/{cbid}/cookies/presets/{vendor}.
      *
      * @return array<string, mixed> { vendor, removed }
