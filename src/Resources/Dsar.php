@@ -130,6 +130,17 @@ final class Dsar
     }
 
     /**
+     * The requests with one origin — GET /v1/dsar?origin=. `account_deletion`: those a
+     * person's own account deletion opened.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listByOrigin(string $origin): array
+    {
+        return $this->client->requestJson('GET', '/v1/dsar', null, ['origin' => $origin]);
+    }
+
+    /**
      * Open a case fanned out to every connected system — POST /v1/dsar/requests. `type` takes the
      * canonical words (access, deletion, closure, restriction, rectification) or an alias (erasure,
      * erase, export). `subject` is ['emails' => [...], 'identity' => ['iss' =>, 'sub' =>, 'ext' =>, 'principal' =>]]

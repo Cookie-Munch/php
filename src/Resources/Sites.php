@@ -56,7 +56,7 @@ final class Sites
      * and `aliases` ([] clears them). The cbid and the consent ledger stay; a domain move clears
      * verification. $dryRun answers with the diff and its effects, storing nothing.
      *
-     * @param array{domain?: string, name?: string|null, aliases?: list<string>} $patch
+     * @param array{domain?: string, name?: string|null, aliases?: list<string>, keepOldDomain?: bool} $patch
      * @return array<string, mixed> { site, diff, effects, warnings?, dryRun? }
      */
     public function update(string $cbid, array $patch, bool $dryRun = false): array

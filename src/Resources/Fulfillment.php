@@ -76,6 +76,8 @@ public function connectExecutor(
     ?string $webhookSecret = null,
     ?bool $auto = null,
     bool $dryRun = false,
+    ?bool $requireApproval = null,
+    ?string $verify = null,
 ): array {
     $body = [
         'system' => $system,
@@ -89,8 +91,26 @@ public function connectExecutor(
     if ($auto !== null) {
         $body['auto'] = $auto;
     }
+    if ($requireApproval !== null) {
+        $body['requireApproval'] = $requireApproval;
+    }
 
-    return $this->client->requestJson('POST', '/v1/dsar/executors' . ($dryRun ? '?dryRun=1' : ''), $body);
+    return $this->client->requestJson('POST', '/v1/dsar/executors', $body, self::connectQuery($dryRun, $verify));
+}
+
+/**
+ * `$verify`: "1" probes the connection first (a canary locate; no erasure is sent) and refuses a
+ * failing one (422 verify_failed, nothing stored); "warn" stores it with the verdict in warnings.
+ *
+ * @return array<string, string|null>
+ */
+private static function connectQuery(bool $dryRun, ?string $verify): array
+{
+    if ($verify !== null && $verify !== '1' && $verify !== 'warn') {
+        throw new \InvalidArgumentException('verify must be "1" or "warn"');
+    }
+
+    return ['dryRun' => $dryRun ? '1' : null, 'verify' => $verify];
 }
 
 /**
@@ -102,15 +122,15 @@ public function connectExecutor(
  * Pass a null `$secretKey` with `mintFrom` in `$options` (a partner id that registered an executorKeyUrl) to have
  * that partner mint the key for the site under its link; `externalId` names the partner account.
  *
- * @param array{system?: string, baseUrl?: string, orgId?: string, atlasIdAppId?: string, presetVersion?: int, webhookSecret?: string, auto?: bool, cbid?: string, mintFrom?: string, externalId?: string} $options
+ * @param array{system?: string, baseUrl?: string, orgId?: string, atlasIdAppId?: string, presetVersion?: int, webhookSecret?: string, auto?: bool, cbid?: string, mintFrom?: string, externalId?: string, requireApproval?: bool} $options
  *
  * @return array<string, mixed>
  */
-public function connectExecutorPreset(string $preset, ?string $secretKey, array $options = [], bool $dryRun = false): array
+public function connectExecutorPreset(string $preset, ?string $secretKey, array $options = [], bool $dryRun = false, ?string $verify = null): array
 {
     $body = ['preset' => $preset] + ($secretKey !== null ? ['secretKey' => $secretKey] : []) + $options;
 
-    return $this->client->requestJson('POST', '/v1/dsar/executors' . ($dryRun ? '?dryRun=1' : ''), $body);
+    return $this->client->requestJson('POST', '/v1/dsar/executors', $body, self::connectQuery($dryRun, $verify));
 }
 
 /**
@@ -244,6 +264,25 @@ public function task(string $requestId, string $taskId): array
     return $this->client->requestJson(
         'GET',
         '/v1/dsar/' . rawurlencode($requestId) . '/tasks/' . rawurlencode($taskId),
+    );
+}
+
+/** @return array<string, mixed> Send an erasure that was awaiting approval (requireApproval). Audited. */
+public function approveTask(string $requestId, string $taskId): array
+{
+    return $this->client->requestJson(
+        'POST',
+        '/v1/dsar/' . rawurlencode($requestId) . '/tasks/' . rawurlencode($taskId) . '/approve',
+    );
+}
+
+/** @return array<string, mixed> Refuse it: nothing is sent, and the task fails with the reason. Audited. */
+public function rejectTask(string $requestId, string $taskId, ?string $reason = null): array
+{
+    return $this->client->requestJson(
+        'POST',
+        '/v1/dsar/' . rawurlencode($requestId) . '/tasks/' . rawurlencode($taskId) . '/reject',
+        (object) ($reason !== null ? ['reason' => $reason] : []),
     );
 }
 

@@ -27,10 +27,11 @@ final class Webhooks
     }
 
     /**
-     * Create a webhook subscription — POST /v1/webhooks.
-     * The signing `secret` is returned ONCE, in this response.
+     * Create a webhook subscription — POST /v1/webhooks. `events` takes names, `*` and
+     * `<family>.*`. A generated signing `secret` is returned ONCE, in this response; one you
+     * pass as `secret` (32–256 printable characters) is not echoed back.
      *
-     * @param array{url: string, events: list<string>, cbid?: string|null} $input
+     * @param array{url: string, events: list<string>, cbid?: string|null, secret?: string} $input
      *
      * @return array<string, mixed>
      */
@@ -59,14 +60,16 @@ final class Webhooks
     }
 
     /**
-     * Rotate a subscription's signing secret — POST /v1/webhooks/{id}/roll. The new secret
-     * is returned once; deliveries are signed with it from now on.
+     * Rotate a subscription's signing secret — POST /v1/webhooks/{id}/roll. A generated secret
+     * is returned once; one you pass (32–256 printable characters) is not echoed, and the answer
+     * is `['rolled' => true]`. Deliveries are signed with it from now on.
      *
      * @return array<string, mixed>
      */
-    public function rollSecret(string $id): array
+    public function rollSecret(string $id, ?string $secret = null): array
     {
-        return $this->client->requestJson('POST', '/v1/webhooks/' . rawurlencode($id) . '/roll');
+        $path = '/v1/webhooks/' . rawurlencode($id) . '/roll';
+        return $secret === null ? $this->client->requestJson('POST', $path) : $this->client->requestJson('POST', $path, ['secret' => $secret]);
     }
 
     /**
