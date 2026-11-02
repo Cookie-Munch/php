@@ -585,6 +585,19 @@ final class Sites
     }
 
     /**
+     * Plan a provisioning run, storing nothing — POST /v1/sites/{cbid}/cookies/plan with optional
+     * `cookies`, `replace` and `presets` (vendor => params): the declarations PUT, then each preset
+     * in key order, against one scratch copy.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed> { dryRun, steps, declared, count, diff }
+     */
+    public function planCookies(string $cbid, array $input = []): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . rawurlencode($cbid) . '/cookies/plan', (object) $input);
+    }
+
+    /**
      * The site's own translation account — GET /v1/sites/{cbid}/translation: provider, key last
      * four and fingerprint, when connected. Never the key.
      *
