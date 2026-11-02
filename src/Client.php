@@ -12,6 +12,7 @@ use CookieMunch\Resources\Consent;
 use CookieMunch\Resources\Dsar;
 use CookieMunch\Resources\Keys;
 use CookieMunch\Resources\Sandbox;
+use CookieMunch\Resources\Anchors;
 use CookieMunch\Resources\Members;
 use CookieMunch\Resources\Org;
 use CookieMunch\Resources\Preferences;
@@ -77,6 +78,7 @@ final class Client
     public readonly Members $members;
     public readonly Keys $keys;
     public readonly Sandbox $sandbox;
+    public readonly Anchors $anchors;
     public readonly Webhooks $webhooks;
     public readonly Banners $banners;
     public readonly Identity $identity;
@@ -134,6 +136,7 @@ final class Client
         $this->members = new Members($this);
         $this->keys = new Keys($this);
         $this->sandbox = new Sandbox($this);
+        $this->anchors = new Anchors($this);
         $this->webhooks = new Webhooks($this);
         $this->banners = new Banners($this);
         $this->identity = new Identity($this);
