@@ -66,6 +66,16 @@ $client = makeClient(fn () => ['status' => 200, 'headers' => ['Content-Type' => 
 $sites = $client->sites->list();
 check(count($sites) === 1 && ($sites[0]['cbid'] ?? null) === 'cb_1', 'sites->list parses array');
 
+echo "list envelope (API version 2026-11-03)\n";
+$envelope = function (string $body, string $version): mixed {
+    $c = [];
+    return makeClient(fn () => ['status' => 200, 'headers' => ['Content-Type' => 'application/json', 'CookieMunch-Version' => $version], 'body' => $body], $c)->sites->list();
+};
+check($envelope('{"data":[{"cbid":"cb_1"}],"next":"1"}', '2026-11-03') === [['cbid' => 'cb_1']], 'unwraps {data} from 2026-11-03');
+check($envelope('[{"cbid":"cb_1"}]', '2026-01-01') === [['cbid' => 'cb_1']], 'keeps a bare array');
+check($envelope('{"data":[{"cbid":"cb_1"}]}', '2026-10-24') === ['data' => [['cbid' => 'cb_1']]], 'leaves {data} alone before 2026-11-03');
+check($envelope('{"data":[],"total":0}', '2026-11-03') === ['data' => [], 'total' => 0], 'leaves an object with other fields alone');
+
 $captured = [];
 $client = makeClient(fn () => ['status' => 200, 'body' => '[]'], $captured);
 $client->consent->log('cb 1', ['from' => 100, 'to' => 200, 'limit' => 5]);

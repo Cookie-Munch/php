@@ -504,6 +504,14 @@ final class Client
             return $response->body;
         }
 
+        // From API version 2026-11-03 a list answers {"data": [...]} (plus "next"); hand back the list either way.
+        $version = $response->header('cookiemunch-version');
+        if ($version !== null && $version >= '2026-11-03' && is_array($decoded) && isset($decoded['data'])
+            && is_array($decoded['data']) && array_is_list($decoded['data'])
+            && array_diff(array_keys($decoded), ['data', 'next']) === []) {
+            return $decoded['data'];
+        }
+
         /** @var array<mixed>|null $decoded */
         return $decoded;
     }
