@@ -508,7 +508,7 @@ final class Sites
     }
 
     /**
-     * Every declaration preset (atlas, forumulate, chatly, cookiemunch, referalli, firstpromoter, partnerstack, tapfiliate, impact): its parameters, what
+     * Every declaration preset (atlas, forumulate, chatly, cookiemunch, referalli, firstpromoter, partnerstack, tapfiliate, impact, seolyticize): its parameters, what
      * it has declared on this site, and whether the vendor's manifest exists yet —
      * GET /v1/sites/{cbid}/cookies/presets.
      *
