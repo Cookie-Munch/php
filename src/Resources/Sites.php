@@ -652,6 +652,24 @@ final class Sites
     }
 
     /**
+     * Machine-translate the site's own banner and category copy into the i18n.overrides languages it
+     * lacks, on its connected account — POST /v1/sites/{cbid}/config/translate. Never overwrites a
+     * person's text. $dryRun calls no provider.
+     *
+     * @param list<string>|null $languages
+     * @return array<string, mixed> { dryRun, provider, languages, unsupported, failed, characters, translated, changes, skipped }
+     */
+    public function translateConfig(string $cbid, ?array $languages = null, bool $dryRun = false): array
+    {
+        $body = [];
+        if ($languages !== null) {
+            $body['languages'] = array_values($languages);
+        }
+        $path = '/v1/sites/' . rawurlencode($cbid) . '/config/translate' . ($dryRun ? '?dryRun=1' : '');
+        return $this->client->requestJson('POST', $path, (object) $body);
+    }
+
+    /**
      * Remove every declaration a vendor preset made — DELETE /v1/sites/{cbid}/cookies/presets/{vendor}.
      *
      * @return array<string, mixed> { vendor, removed }
