@@ -122,7 +122,9 @@ private static function connectQuery(bool $dryRun, ?string $verify): array
  * Pass a null `$secretKey` with `mintFrom` in `$options` (a partner id that registered an executorKeyUrl) to have
  * that partner mint the key for the site under its link; `externalId` names the partner account.
  *
- * @param array{system?: string, baseUrl?: string, orgId?: string, atlasIdAppId?: string, presetVersion?: int, webhookSecret?: string, auto?: bool, cbid?: string, mintFrom?: string, externalId?: string, requireApproval?: bool} $options
+ * `params` carries any of the preset's params by name (`['programId' => 'prg_1']` for referalli).
+ *
+ * @param array{system?: string, baseUrl?: string, orgId?: string, atlasIdAppId?: string, presetVersion?: int, webhookSecret?: string, auto?: bool, cbid?: string, mintFrom?: string, externalId?: string, requireApproval?: bool, params?: array<string, string|bool>} $options
  *
  * @return array<string, mixed>
  */
@@ -145,6 +147,17 @@ public function executorPresets(): array
 }
 
 /**
+ * The platforms a site's cookie rows and partner links imply that have no connected system yet,
+ * with each preset's availability — GET /v1/dsar/executors/suggestions. Null cbid: every site the key reaches.
+ *
+ * @return array<string, mixed> { data: [{ cbid, preset, platform, reason, available, waitingOn? }] }
+ */
+public function executorSuggestions(?string $cbid = null): array
+{
+    return $this->client->requestJson('GET', '/v1/dsar/executors/suggestions', null, ['cbid' => $cbid]);
+}
+
+/**
  * Rebuild a connection from its preset's latest version (or `presetVersion`), keeping its id
  * and credential; `preset` adopts one on a hand-written connection — POST
  * /v1/dsar/executors/{id}/upgrade-preset. Answers with a diff; `$dryRun` changes nothing.
@@ -153,7 +166,7 @@ public function executorPresets(): array
  * `acceptPreset` names the paths that take the preset's value again. A pinned connection is
  * refused (409 `preset_pinned`).
  *
- * @param array{preset?: string, presetVersion?: int, orgId?: string, atlasIdAppId?: string, revokeAtlasIdGrant?: bool, acceptPreset?: string|list<string>} $input
+ * @param array{preset?: string, presetVersion?: int, orgId?: string, atlasIdAppId?: string, revokeAtlasIdGrant?: bool, acceptPreset?: string|list<string>, params?: array<string, string|bool>} $input
  *
  * @return array<string, mixed>
  */
@@ -339,6 +352,17 @@ public function reportTask(string $taskId, bool $ok, ?string $error = null): arr
 public function executorConformance(string $id): array
 {
     return $this->client->requestJson('POST', '/v1/dsar/executors/' . rawurlencode($id) . '/test', ['conformance' => true]);
+}
+
+/**
+ * The connection's current completion secret and completionUrl, read again (dsar:write,
+ * audited) — GET /v1/dsar/executors/{id}/completion-secret.
+ *
+ * @return array<string, mixed>
+ */
+public function getExecutorCompletionSecret(string $id): array
+{
+    return $this->client->requestJson('GET', '/v1/dsar/executors/' . rawurlencode($id) . '/completion-secret');
 }
 
 /**

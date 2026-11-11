@@ -50,4 +50,14 @@ final class RightsIdentity
     {
         return $this->client->requestJson('DELETE', '/v1/sites/' . rawurlencode($cbid) . '/rights-identity');
     }
+
+    /**
+     * POST /v1/sites/{cbid}/rights-identity/check — one session token as the rights intake would see it. Files nothing.
+     *
+     * @return array<string, mixed> `verified`, `reason`, `jwt`, `detail`, `claims`
+     */
+    public function check(string $cbid, string $token): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . rawurlencode($cbid) . '/rights-identity/check', ['token' => $token]);
+    }
 }

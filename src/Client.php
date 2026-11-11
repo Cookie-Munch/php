@@ -341,9 +341,9 @@ final class Client
      *
      * @return array<string, mixed>
      */
-    public function audit(?int $limit = null, ?string $actor = null): array
+    public function audit(?int $limit = null, ?string $actor = null, ?string $since = null): array
     {
-        return $this->requestJson('GET', '/v1/audit', null, ['limit' => $limit, 'actor' => $actor]);
+        return $this->requestJson('GET', '/v1/audit', null, ['limit' => $limit, 'actor' => $actor, 'since' => $since]);
     }
 
     /** GET /v1/audit/sink — where the audit log is streamed as CloudEvents (never the secret). */

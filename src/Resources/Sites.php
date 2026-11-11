@@ -202,13 +202,14 @@ final class Sites
     /**
      * Start a cookie crawl — POST /v1/sites/{cbid}/scan. Answers at once with `scanId`
      * and `state: queued`; $wait (seconds, at most 60) holds the request until it is done
-     * or failed.
+     * or failed. $cookies (a test account's Cookie header value, "sid=abc; csrf=def") makes
+     * it a signed-in crawl; never stored or returned. Once done: `undeclared` and `stale`.
      *
      * @return array<string, mixed> ScanStatus
      */
-    public function scan(string $cbid, int|float|null $wait = null): array
+    public function scan(string $cbid, int|float|null $wait = null, ?string $cookies = null): array
     {
-        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/scan' . self::waitQuery($wait));
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/scan' . self::waitQuery($wait), $cookies === null ? null : ['cookies' => $cookies]);
     }
 
     /**
@@ -508,7 +509,7 @@ final class Sites
     }
 
     /**
-     * Every declaration preset (atlas, forumulate, chatly, cookiemunch, referalli, firstpromoter, partnerstack, tapfiliate, impact, seolyticize): its parameters, what
+     * Every declaration preset (atlas, forumulate, chatly, cookiemunch, referalli, firstpromoter, partnerstack, tapfiliate, impact, seolyticize, lucida, hermetica, watchtower): its parameters, what
      * it has declared on this site, and whether the vendor's manifest exists yet —
      * GET /v1/sites/{cbid}/cookies/presets.
      *
@@ -523,7 +524,7 @@ final class Sites
      * Apply (or re-sync) a vendor preset: declares what that platform writes, marked
      * `vendor` — PUT /v1/sites/{cbid}/cookies/presets/{vendor}. Atlas takes
      * `frontendApiHost`/`crossSubdomainCookies`/`publishableKey`; Chatly `publicId`/`dragging`/`storage`/`tracking`/`category`;
-     * referral presets `cookieDomain`/`cookieDays`/`category` (referalli `legacyName`, impact `campaignId`).
+     * referral presets `cookieDomain`/`cookieDays`/`category` (referalli `legacyName`, impact `campaignId`); lucida `publicKey`/`cookieDomain`/`category`, hermetica `storage` ("localStorage" or "cookie")/`category`, watchtower `category`.
      *
      * @param array<string, mixed> $params
      * @return array<string, mixed> { vendor, cookies, removed, skipped?, note?, manifest }
