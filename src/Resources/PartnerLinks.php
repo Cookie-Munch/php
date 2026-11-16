@@ -40,4 +40,15 @@ final class PartnerLinks
     {
         return $this->client->requestJson('DELETE', '/v1/partner_links/' . rawurlencode($id));
     }
+
+    /**
+     * Fix a link's externalId or label in place, keeping the grant — PATCH /v1/partner_links/{id}.
+     *
+     * @param array{externalId?: string, label?: string} $input
+     * @return array<string, mixed> the link, with change, dryRun?, warnings?
+     */
+    public function update(string $id, array $input, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('PATCH', '/v1/partner_links/' . rawurlencode($id) . ($dryRun ? '?dryRun=1' : ''), $input);
+    }
 }

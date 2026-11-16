@@ -121,6 +121,18 @@ final class Sites
     }
 
     /**
+     * Fix a site link's externalId or label in place, keeping the grant — PATCH
+     * /v1/sites/{cbid}/partners/{linkId}. `warnings` names executor keys minted for the old account.
+     *
+     * @param array{externalId?: string, label?: string} $input
+     * @return array<string, mixed> { change, link, steps, nextSteps, dryRun?, warnings? }
+     */
+    public function updatePartner(string $cbid, string $linkId, array $input, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('PATCH', '/v1/sites/' . self::enc($cbid) . '/partners/' . self::enc($linkId) . ($dryRun ? '?dryRun=1' : ''), $input);
+    }
+
+    /**
      * Get site config — GET /v1/sites/{cbid}/config.
      *
      * @return array<string, mixed>

@@ -87,7 +87,7 @@ try {
 | `$cm->assets` | `upload` — base64 image, returns `{ url }` |
 | `$cm->integrationHealth()`, `$cm->provision()` | every integration link with a fix hint; one-call wiring (idempotent, `$dryRun`, no secret returned) |
 | `$cm->keys->report()` | key hygiene: unused, broad, expiring soon; `issue(['expiresAt' => …])`, `update($p, ['expiresAt' => null])`; pass `strictUnknownFields: true` to the constructor to refuse mistyped fields |
-| `$cm->sites` | `list`, `create`, `get`, `update` (rename/move; cbid and ledger stay), `listPartners`, `linkPartner`, `unlinkPartner` (partner links, no secret), `delete`, `getConfig`, `putConfig`, `patchConfig`, `lintConfig` (consent-button parity, nothing saved), `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getBrand`/`setBrand` (brand.json import + read-back), `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
+| `$cm->sites` | `list`, `create`, `get`, `update` (rename/move; cbid and ledger stay), `listPartners`, `linkPartner`, `updatePartner`, `unlinkPartner` (partner links, no secret), `delete`, `getConfig`, `putConfig`, `patchConfig`, `lintConfig` (consent-button parity, nothing saved), `cookies`, `scan`, `scanStatus`, `ab`, `snippet`, `verify`, `brand`, `getBrand`/`setBrand` (brand.json import + read-back), `getFlow`, `editFlow`, `setFlow`, `enableAdPersonalization`, `banner`, `policy` (Markdown string), `analyzeSession` |
 | `$cm->consent` | `ingest`, `stats`, `log`, `export`, `receipt`, `eraseSubject`, `exportSubject` |
 | `$cm->dsar` | `list`, `create`, `advance`, `response` (plain-text notice), `erase`, `export` |
 | `$cm->vendors` | `list`, `create` |
