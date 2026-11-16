@@ -599,6 +599,18 @@ final class Sites
     }
 
     /**
+     * Apply what planCookies shows, all or nothing — POST /v1/sites/{cbid}/cookies/apply with the same body
+     * (incl. `handOver`): stored only when every step passes; a refusal stores nothing.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed> { applied, steps, declared, count, diff }
+     */
+    public function applyCookies(string $cbid, array $input = []): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . rawurlencode($cbid) . '/cookies/apply', (object) $input);
+    }
+
+    /**
      * The site's own translation account — GET /v1/sites/{cbid}/translation: provider, key last
      * four and fingerprint, when connected. Never the key.
      *
