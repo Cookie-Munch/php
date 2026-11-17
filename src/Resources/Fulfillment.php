@@ -302,6 +302,15 @@ public function approveTask(string $requestId, string $taskId): array
     );
 }
 
+/** @return array<string, mixed> Send a failed task again once its system is fixed: a new request upstream. Audited. */
+public function retryTask(string $requestId, string $taskId): array
+{
+    return $this->client->requestJson(
+        'POST',
+        '/v1/dsar/' . rawurlencode($requestId) . '/tasks/' . rawurlencode($taskId) . '/retry',
+    );
+}
+
 /** @return array<string, mixed> Refuse it: nothing is sent, and the task fails with the reason. Audited. */
 public function rejectTask(string $requestId, string $taskId, ?string $reason = null): array
 {
