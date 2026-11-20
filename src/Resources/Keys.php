@@ -51,6 +51,51 @@ final class Keys
     }
 
     /**
+     * Account key (`orgs:keys`): another org's key prefixes — GET /v1/orgs/{orgId}/keys.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listInOrg(string $orgId): array
+    {
+        /** @var list<array<string, mixed>> $out */
+        $out = $this->client->request('GET', '/v1/orgs/' . rawurlencode($orgId) . '/keys') ?? [];
+
+        return $out;
+    }
+
+    /**
+     * Account key (`orgs:keys`): mint a scoped key in another org of the same account —
+     * POST /v1/orgs/{orgId}/keys. `scopes` is required; the `key` is returned ONCE.
+     *
+     * @param array{scopes: list<string>, name?: string, cbids?: list<string>, expiresInDays?: int, expiresAt?: int|string} $input
+     *
+     * @return array<string, mixed>
+     */
+    public function createInOrg(string $orgId, array $input): array
+    {
+        return $this->client->requestJson('POST', '/v1/orgs/' . rawurlencode($orgId) . '/keys', $input);
+    }
+
+    /**
+     * Account key (`orgs:keys`): update a key in another org — PATCH /v1/orgs/{orgId}/keys/{prefix}.
+     * Same fields as `update()`.
+     *
+     * @param array{name?: string, scopes?: list<string>, cbids?: list<string>, expiresAt?: int|string|null} $patch
+     *
+     * @return array<string, mixed>
+     */
+    public function updateInOrg(string $orgId, string $prefix, array $patch): array
+    {
+        return $this->client->requestJson('PATCH', '/v1/orgs/' . rawurlencode($orgId) . '/keys/' . rawurlencode($prefix), $patch);
+    }
+
+    /** Account key (`orgs:keys`): revoke a key in another org — DELETE /v1/orgs/{orgId}/keys/{prefix}. Immediate. */
+    public function revokeInOrg(string $orgId, string $prefix): void
+    {
+        $this->client->request('DELETE', '/v1/orgs/' . rawurlencode($orgId) . '/keys/' . rawurlencode($prefix));
+    }
+
+    /**
      * Rotate a key: a new secret, returned once, with the same name, scopes, property lock
      * and expiry — POST /v1/keys/{prefix}/roll. The old secret stops working immediately.
      *
