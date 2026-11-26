@@ -64,6 +64,73 @@ final class Sites
         return $this->client->requestJson('PATCH', '/v1/sites/' . self::enc($cbid) . ($dryRun ? '?dryRun=1' : ''), $patch);
     }
 
+    /**
+     * Move the site to a new domain — POST /v1/sites/{cbid}/move: every stored value naming the old
+     * host, rewritten. After a refusal, send `retry.body` again: what moved is skipped.
+     *
+     * @param array{to: string, from?: string, keepOld?: bool, trustOldDays?: int} $input
+     * @return array<string, mixed> { ok, from, to, changes, steps, notRun?, notChanged?, retry?, dryRun? }
+     */
+    public function move(string $cbid, array $input, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($cbid) . '/move' . ($dryRun ? '?dryRun=1' : ''), $input);
+    }
+
+    /**
+     * A tenant: a site for one of your customers (a creator, a shop), the controller for its own visitors —
+     * POST /v1/sites/{cbid}/tenants. Idempotent by `externalId`.
+     *
+     * @param array<string, mixed> $tenant { externalId, name?, path?, domains?, controller?, inherit? }
+     * @return array<string, mixed>
+     */
+    public function createTenant(string $parentCbid, array $tenant, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($parentCbid) . '/tenants' . ($dryRun ? '?dryRun=1' : ''), $tenant);
+    }
+
+    /**
+     * Up to 100 tenants — POST /v1/sites/{cbid}/tenants/bulk. Send the same list again to resume.
+     *
+     * @param list<array<string, mixed>> $tenants
+     * @return array<string, mixed>
+     */
+    public function createTenantsBulk(string $parentCbid, array $tenants, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('POST', '/v1/sites/' . self::enc($parentCbid) . '/tenants/bulk' . ($dryRun ? '?dryRun=1' : ''), ['tenants' => $tenants]);
+    }
+
+    /**
+     * One page of tenants — GET /v1/sites/{cbid}/tenants.
+     *
+     * @return array<string, mixed> { tenants, nextCursor, total }
+     */
+    public function listTenants(string $parentCbid, ?int $limit = null, ?string $cursor = null): array
+    {
+        $q = array_filter(['limit' => $limit !== null ? (string) $limit : null, 'cursor' => $cursor], static fn ($v) => $v !== null);
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($parentCbid) . '/tenants' . ($q ? '?' . http_build_query($q) : ''));
+    }
+
+    /** @return array<string, mixed> GET /v1/sites/{cbid}/tenants/{externalId} */
+    public function getTenant(string $parentCbid, string $externalId): array
+    {
+        return $this->client->requestJson('GET', '/v1/sites/' . self::enc($parentCbid) . '/tenants/' . self::enc($externalId));
+    }
+
+    /**
+     * @param array<string, mixed> $patch { name?, path?, controller? }
+     * @return array<string, mixed> PATCH /v1/sites/{cbid}/tenants/{externalId}
+     */
+    public function updateTenant(string $parentCbid, string $externalId, array $patch, bool $dryRun = false): array
+    {
+        return $this->client->requestJson('PATCH', '/v1/sites/' . self::enc($parentCbid) . '/tenants/' . self::enc($externalId) . ($dryRun ? '?dryRun=1' : ''), $patch);
+    }
+
+    /** Delete a tenant and everything its site holds — DELETE /v1/sites/{cbid}/tenants/{externalId}. Irreversible. */
+    public function deleteTenant(string $parentCbid, string $externalId, bool $dryRun = false): void
+    {
+        $this->client->request('DELETE', '/v1/sites/' . self::enc($parentCbid) . '/tenants/' . self::enc($externalId) . ($dryRun ? '?dryRun=1' : ''));
+    }
+
     /** Delete a site — DELETE /v1/sites/{cbid}. */
     public function delete(string $cbid): void
     {
